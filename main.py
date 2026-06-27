@@ -87,6 +87,148 @@ async def _daily_snapshot_job():
         logger.exception("daily_snapshot job failed")
 
 
+# ── Global Dark Theme CSS ──────────────────────────────────────────────────
+DARK_CSS = """
+<style>
+  :root {
+    --bg: #0a0e14;
+    --surface: #141820;
+    --card: #1a1f2b;
+    --card-hover: #1e2533;
+    --border: #252b38;
+    --accent: #00c853;
+    --accent2: #ffc107;
+    --accent3: #00bcd4;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --danger: #ef5350;
+    --warning: #ff9800;
+  }
+  body {
+    background: var(--bg) !important;
+    color: var(--text) !important;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .q-tab--active {
+    color: var(--accent) !important;
+    border-bottom: 2px solid var(--accent) !important;
+  }
+  .q-tab {
+    color: var(--text-dim) !important;
+  }
+  .q-table {
+    background: var(--card) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+  }
+  .q-table th {
+    background: var(--surface) !important;
+    color: var(--accent2) !important;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .q-table td {
+    color: var(--text) !important;
+    border-color: var(--border) !important;
+  }
+  .q-card {
+    background: var(--card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3) !important;
+    transition: box-shadow 0.2s;
+  }
+  .q-card:hover {
+    box-shadow: 0 6px 32px rgba(0,0,0,0.5) !important;
+  }
+  .match-card:hover {
+    border-color: var(--accent) !important;
+  }
+  .q-field__native, .q-field__label {
+    color: var(--text) !important;
+  }
+  input[type=number] {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    text-align: center !important;
+    width: 80px !important;
+  }
+  input[type=number]:focus {
+    border-color: var(--accent) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(0,200,83,0.15) !important;
+  }
+  .stage-badge {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    border-radius: 6px !important;
+    padding: 2px 10px !important;
+    text-transform: uppercase;
+  }
+  .stage-group { background: #1a3a2a !important; color: #4ade80 !important; }
+  .stage-knockout { background: #3a1a1a !important; color: #f87171 !important; }
+  .stage-amistoso { background: #1a2a3a !important; color: #60a5fa !important; }
+  .btn-save {
+    background: linear-gradient(135deg, var(--accent), #00a844) !important;
+    color: #000 !important;
+    font-weight: 700 !important;
+    border-radius: 8px !important;
+  }
+  .btn-logout {
+    color: var(--text-dim) !important;
+    opacity: 0.7;
+  }
+  .btn-logout:hover {
+    color: var(--danger) !important;
+    opacity: 1;
+  }
+  .header-bar {
+    background: linear-gradient(180deg, var(--surface) 0%, transparent 100%);
+    padding-bottom: 12px;
+  }
+  .flag-display {
+    font-size: 2rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+  .vs-divider {
+    color: var(--text-dim);
+    font-weight: 300;
+    font-size: 0.85rem;
+  }
+  .match-time {
+    background: var(--surface);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--accent2);
+  }
+  .page-title {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+  }
+  .points-badge {
+    background: linear-gradient(135deg, #b45309, #d97706);
+    color: #fef3c7;
+    font-weight: 800;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+  }
+</style>
+"""
+
 # ── UI ──────────────────────────────────────────────────────────────────────
 
 @ui.page("/")
@@ -95,33 +237,41 @@ def index():
     if not session_guard():
         return
 
+    # Inject dark theme
+    ui.add_head_html(DARK_CSS)
+
     player_name = app.storage.user.get("player_name", "???")
     avatar = app.storage.user.get("avatar_flag", "🏳️")
 
     # ── Header ──
-    with ui.row().classes(
-        "w-full max-w-4xl mx-auto items-center justify-between mt-4 px-4"
-    ):
-        ui.label(f"{avatar}  {player_name}").classes("text-xl font-bold")
-        ui.button(
-            "Salir",
-            icon="logout",
-            on_click=lambda: (
-                app.storage.user.clear(),
-                ui.navigate.to("/login"),
-            ),
-        ).props("flat")
-
-    ui.separator().classes("w-full max-w-4xl mx-auto my-2")
+    with ui.header(elevated=False).classes("header-bar"):
+        with ui.row().classes(
+            "w-full max-w-4xl mx-auto items-center justify-between px-4 py-3"
+        ):
+            with ui.row().classes("items-center gap-2"):
+                ui.label("⚽").classes("text-2xl")
+                ui.label("Quiniela").classes("text-xl font-bold page-title")
+            with ui.row().classes("items-center gap-3"):
+                ui.label(avatar).classes("flag-display")
+                ui.label(player_name).classes("text-lg font-semibold text-white")
+                ui.button(
+                    "Salir",
+                    icon="logout",
+                    on_click=lambda: (
+                        app.storage.user.clear(),
+                        ui.navigate.to("/login"),
+                    ),
+                ).props("flat dense").classes("btn-logout")
 
     # ── Tabs ──
-    with ui.tabs().classes("w-full max-w-4xl mx-auto") as tabs:
-        ui.tab("Hoy", icon="today")
-        ui.tab("Tabla", icon="leaderboard")
-        ui.tab("Mañana", icon="event")
+    with ui.row().classes("w-full max-w-4xl mx-auto mt-4 px-2"):
+        with ui.tabs().classes("w-full") as tabs:
+            ui.tab("Hoy", icon="sports_soccer")
+            ui.tab("Tabla", icon="leaderboard")
+            ui.tab("Mañana", icon="event")
 
-    with ui.tab_panels(tabs, value="Tabla").classes(
-        "w-full max-w-4xl mx-auto"
+    with ui.tab_panels(tabs, value="Hoy").classes(
+        "w-full max-w-4xl mx-auto mt-2 px-2 mb-8"
     ):
         with ui.tab_panel("Hoy"):
             hoy_page()

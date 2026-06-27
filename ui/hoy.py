@@ -187,20 +187,21 @@ def hoy_page() -> None:
                         points = _get_match_score(player_id, match_id)
 
                 # ── Card ──
-                with ui.card().classes("w-full mb-3 p-4"):
+                with ui.card().classes("w-full mb-3 p-4 match-card"):
                     # ── Header row: teams + kickoff ──
                     with ui.row().classes("w-full items-center justify-between"):
                         with ui.row().classes("items-center gap-3"):
-                            ui.label(home_flag).classes("text-2xl")
+                            ui.label(home_flag).classes("flag-display")
                             ui.label(
                                 home if home else "TBD"
-                            ).classes("text-lg font-semibold")
-                            ui.label("vs").classes("text-gray-400 mx-2")
+                            ).classes("text-lg font-bold")
+                            ui.label("vs").classes("vs-divider mx-1")
                             ui.label(
                                 away if away else "TBD"
-                            ).classes("text-lg font-semibold")
-                            ui.label(away_flag).classes("text-2xl")
-                        ui.label(k_str).classes("text-sm text-gray-500")
+                            ).classes("text-lg font-bold")
+                            ui.label(away_flag).classes("flag-display")
+                        if k_str:
+                            ui.label(k_str).classes("match-time")
 
                     # ── TBD handling ──
                     if home is None or away is None:
@@ -209,9 +210,8 @@ def hoy_page() -> None:
                         ).classes("text-sm text-amber-500 mt-2")
                         with ui.row().classes("w-full justify-end mt-1"):
                             stage = m.get("stage", "group") or "group"
-                            ui.label(stage.upper()).classes(
-                                "text-xs text-gray-500 bg-gray-800 rounded px-2 py-0.5"
-                            )
+                            badge_class = f"stage-badge stage-{stage}"
+                            ui.label(stage.upper()).classes(badge_class)
                         continue
 
                     # ── Finished match: show real score vs prediction + points ──
@@ -266,9 +266,8 @@ def hoy_page() -> None:
                         # ── Stage badge ──
                         with ui.row().classes("w-full justify-end mt-2"):
                             stage = m.get("stage", "group") or "group"
-                            ui.label(stage.upper()).classes(
-                                "text-xs text-gray-500 bg-gray-800 rounded px-2 py-0.5"
-                            )
+                            badge_class = f"stage-badge stage-{stage}"
+                            ui.label(stage.upper()).classes(badge_class)
                         continue
 
                     # ── Editable / locked state ──

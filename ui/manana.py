@@ -120,19 +120,19 @@ def manana_page() -> None:
                 away_flag = m["away_flag"] or "🏳️"
                 tbd = is_tbd(m)
 
-                with ui.card().classes("w-full mb-3 p-4"):
+                with ui.card().classes("w-full mb-3 p-4 match-card"):
                     with ui.row().classes("w-full items-center justify-between"):
                         # ── Teams display ──
                         with ui.row().classes("items-center gap-3"):
-                            ui.label(home_flag).classes("text-2xl")
+                            ui.label(home_flag).classes("flag-display")
                             ui.label(
                                 home if home else "TBD"
-                            ).classes("text-lg font-semibold")
-                            ui.label("vs").classes("text-gray-400 mx-2")
+                            ).classes("text-lg font-bold")
+                            ui.label("vs").classes("vs-divider mx-1")
                             ui.label(
                                 away if away else "TBD"
-                            ).classes("text-lg font-semibold")
-                            ui.label(away_flag).classes("text-2xl")
+                            ).classes("text-lg font-bold")
+                            ui.label(away_flag).classes("flag-display")
 
                         # ── Kickoff time ──
                         kickoff_str = ""
@@ -140,9 +140,8 @@ def manana_page() -> None:
                             kt = datetime.fromisoformat(m["kickoff_utc"])
                             kt_es = kt.astimezone(TZ_ES)
                             kickoff_str = kt_es.strftime("%H:%M")
-                        ui.label(kickoff_str).classes(
-                            "text-sm text-gray-500"
-                        )
+                        if kickoff_str:
+                            ui.label(kickoff_str).classes("match-time")
 
                     # ── Prediction inputs ──
                     existing = None
@@ -216,9 +215,8 @@ def manana_page() -> None:
                     # ── Stage badge ──
                     with ui.row().classes("w-full justify-end mt-1"):
                         stage_label = m.get("stage", "group") or "group"
-                        ui.label(stage_label.upper()).classes(
-                            "text-xs text-gray-500 bg-gray-800 rounded px-2 py-0.5"
-                        )
+                        badge_class = f"stage-badge stage-{stage_label}"
+                        ui.label(stage_label.upper()).classes(badge_class)
 
     refresh()
 

@@ -65,16 +65,33 @@ def _get_player_names() -> list[str]:
         return [row[0] for row in session.query(Player.name).order_by(Player.name).all()]
 
 
+# ── Dark Theme CSS (keep in sync with main.py) ─────────────────────────
+DARK_CSS = """<style>
+  :root {
+    --bg: #0a0e14; --surface: #141820; --card: #1a1f2b;
+    --border: #252b38; --accent: #00c853; --accent2: #ffc107;
+    --text: #e2e8f0; --text-dim: #94a3b8; --danger: #ef5350;
+  }
+  body { background: var(--bg) !important; color: var(--text) !important; }
+  .q-card { background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: 14px !important; }
+  .q-field__native, .q-field__label { color: var(--text) !important; }
+  .page-title { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
+</style>"""
+
+
 @ui.page("/login")
 def login_page():
     """Login: dropdown de nombres + password 4 dígitos + primer-login bandera."""
     state: dict = {"step": "login", "player": None}
 
+    # Inject dark theme
+    ui.add_head_html(DARK_CSS)
+
     # ── Paso 1: Login ──
     login_card = ui.card().classes("mx-auto mt-20 w-96 p-6")
 
     with login_card:
-        ui.label("🔐 Quiniela Mundialista").classes("text-2xl font-bold text-center w-full mb-4")
+        ui.label("⚽ Quiniela Mundialista").classes("text-2xl font-bold text-center w-full mb-1 page-title")
 
         names = _get_player_names()
         if not names:
