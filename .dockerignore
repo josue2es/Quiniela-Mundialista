@@ -1,0 +1,36 @@
+# Secrets & config — NEVER bake into image
+.env
+*.env
+!.env.example
+players.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Docker
+docker-compose.override.yml
+
+# Data
+*.db
+*.sqlite3
+volume/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
