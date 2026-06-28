@@ -206,10 +206,12 @@ uv run python scripts/seed.py    # ⚠️ reinicia la BD e inserta datos de demo
 uv run python main.py            # ingresá con, p.ej., Cuestas / 1234
 ```
 
-Incluye los 11 jugadores, partidos de hoy (finalizados con marcador, uno en juego
-bloqueado y uno editable), dieciseisavos de mañana (editables + un TBD), predicciones,
-puntuaciones ya calculadas y un snapshot del día anterior para ver la columna Δ.
-El comando imprime credenciales de ejemplo al terminar.
+Incluye los 11 jugadores, el cierre de fase de grupos hoy (2 partidos finalizados
+con marcador, 1 en juego bloqueado y 1 editable), **los 16 dieciseisavos completos**
+(32 equipos, repartidos 4 por día durante 4 días desde mañana, todos editables), los
+8 octavos con equipos **TBD** para completar el bracket, predicciones, puntuaciones
+ya calculadas y un snapshot del día anterior para ver la columna Δ. El comando imprime
+credenciales de ejemplo al terminar.
 
 ### 5. Tests
 
