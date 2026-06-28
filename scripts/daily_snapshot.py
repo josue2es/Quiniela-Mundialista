@@ -28,35 +28,42 @@ TZ_ES = ZoneInfo("America/El_Salvador")
 def compute_standings():
     """Return list of (player_id, total_points, rank) sorted by points desc.
 
-    Competition rank: tied players share the same rank, and the next distinct
-    score skips positions accordingly (1, 2, 2, 4, ...).
+    total_points = initial_points + SUM(match_scores.points). All players are
+    included (even with no scored matches yet). Competition rank: tied players
+    share the same rank, and the next distinct score skips positions
+    accordingly (1, 2, 2, 4, ...).
     """
     from sqlalchemy import func
+    from data.models import Player
 
     with SessionLocal() as session:
-        rows = (
-            session.query(
-                MatchScore.player_id,
-                func.sum(MatchScore.points).label("total_points"),
-            )
+        initials = {
+            p.id: (p.initial_points or 0) for p in session.query(Player).all()
+        }
+        earned = dict(
+            session.query(MatchScore.player_id, func.sum(MatchScore.points))
             .group_by(MatchScore.player_id)
-            .order_by(func.sum(MatchScore.points).desc())
             .all()
         )
 
-    if not rows:
+    if not initials:
         return []
+
+    totals = [
+        (pid, init + (earned.get(pid, 0) or 0)) for pid, init in initials.items()
+    ]
+    totals.sort(key=lambda x: x[1], reverse=True)
 
     standings = []
     rank = 0
     prev_points = None
     position = 0
 
-    for player_id, total_points in rows:
+    for player_id, total_points in totals:
         position += 1
         if total_points != prev_points:
             rank = position
-        standings.append((player_id, total_points or 0, rank))
+        standings.append((player_id, total_points, rank))
         prev_points = total_points
 
     return standings

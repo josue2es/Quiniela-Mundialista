@@ -29,27 +29,22 @@ def _compute_standings():
     today = _today_es()
 
     with SessionLocal() as session:
-        # ── Current standings: SUM(points) per player ──
-        rows = (
-            session.query(
-                MatchScore.player_id,
-                func.sum(MatchScore.points).label("total_points"),
-            )
+        # ── All players (so initial_points show even before any match) ──
+        player_info = {
+            p.id: {
+                "name": p.name,
+                "avatar_flag": p.avatar_flag,
+                "initial": p.initial_points or 0,
+            }
+            for p in session.query(Player).all()
+        }
+
+        # ── Earned points: SUM(match_scores.points) per player ──
+        earned = dict(
+            session.query(MatchScore.player_id, func.sum(MatchScore.points))
             .group_by(MatchScore.player_id)
-            .order_by(func.sum(MatchScore.points).desc())
             .all()
         )
-
-        if not rows:
-            return []
-
-        player_ids = [r.player_id for r in rows]
-
-        # ── Player info ──
-        players_map = {
-            p.id: p
-            for p in session.query(Player).filter(Player.id.in_(player_ids)).all()
-        }
 
         # ── +hoy: SUM(points) for matches whose match_date_local == today ──
         hoy_rows = dict(
@@ -82,23 +77,33 @@ def _compute_standings():
             )
             yesterday_ranks = {s.player_id: s.rank for s in snaps}
 
+    if not player_info:
+        return []
+
+    # total = initial_points + earned; sorted desc (stable for ties)
+    ordered = sorted(
+        player_info.items(),
+        key=lambda kv: kv[1]["initial"] + (earned.get(kv[0], 0) or 0),
+        reverse=True,
+    )
+
     # ── Assign competition rank (ties share rank) ──
     standings = []
     rank = 0
     prev_points = None
     position = 0
 
-    for player_id, total_points in rows:
+    for player_id, info in ordered:
+        total_points = info["initial"] + (earned.get(player_id, 0) or 0)
         position += 1
         if total_points != prev_points:
             rank = position
-        player = players_map.get(player_id)
         standings.append(
             {
                 "player_id": player_id,
-                "player_name": player.name if player else f"#{player_id}",
-                "avatar_flag": player.avatar_flag if player else "🏴",
-                "total_points": total_points or 0,
+                "player_name": info["name"],
+                "avatar_flag": info["avatar_flag"],
+                "total_points": total_points,
                 "rank": rank,
                 "hoy_points": hoy_rows.get(player_id, 0) or 0,
                 "yesterday_rank": yesterday_ranks.get(player_id, None),
