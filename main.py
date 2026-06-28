@@ -31,6 +31,21 @@ logger = logging.getLogger(__name__)
 init_db()
 seed_players()
 
+# Optional demo data (round of 32) — only when SEED_DEMO is set AND the DB has
+# no players yet. Idempotent across restarts: existing data is never wiped.
+if os.environ.get("SEED_DEMO", "").strip().lower() in ("1", "true", "yes"):
+    from data.models import Player
+
+    with SessionLocal() as _s:
+        _is_empty = _s.query(Player).first() is None
+    if _is_empty:
+        from scripts.seed import seed as _seed_demo
+
+        _seed_demo()
+        logger.info("SEED_DEMO: datos de demostración cargados (dieciseisavos)")
+    else:
+        logger.info("SEED_DEMO activo pero la BD ya tiene jugadores — se omite")
+
 # ── Storage secret (requerido para app.storage.user) ────────────────────────
 STORAGE_SECRET = os.environ.get("STORAGE_SECRET", secrets.token_hex(32))
 
@@ -381,7 +396,7 @@ if __name__ in ("__main__", "__mp_main__"):
     ui.run(
         title="Quiniela Mundialista",
         host="0.0.0.0",
-        port=int(os.environ.get("PORT", "8090")),
+        port=int(os.environ.get("PORT", "8091")),
         storage_secret=STORAGE_SECRET,
         reload=False,
     )

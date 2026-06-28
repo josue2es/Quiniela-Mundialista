@@ -77,7 +77,9 @@ def seed_players(csv_path: str | None = None):
     New players get defaults: is_setup=False, avatar_flag=🏴.
     """
     path = csv_path or CSV_PATH
-    if not os.path.exists(path):
+    # isfile (not exists): si el bind-mount de Docker crea un directorio falso
+    # cuando players.csv no existe en el host, no intentamos abrirlo como archivo.
+    if not os.path.isfile(path):
         return
 
     with SessionLocal() as session:
