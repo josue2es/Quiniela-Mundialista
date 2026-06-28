@@ -1,9 +1,9 @@
 """Tab 1 'Hoy' — today's matches with predictions, lock-on-kickoff, finished view.
 
-§9: Partidos de hoy (match_date_local == hoy_ES). Cada partido en ui.card:
-bandera + país + ui.number(min=0, max=100). Botones Guardar/Editar.
-Editar deshabilitado si kickoff_utc <= now. Tras finished: mostrar marcador
-real vs predicción + puntos.
+§9: Partidos de hoy (match_date_local == hoy_ES). Layout mobile-first: cada
+partido en una ui.card con una fila por equipo (bandera + nombre + input de
+goles). Botón Guardar/Editar. Edición bloqueada si kickoff_utc <= now.
+Tras finished: marcador real vs predicción + puntos.
 """
 
 from __future__ import annotations
@@ -26,6 +26,14 @@ def _today_es() -> date:
 
 def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _stage_badge(stage: str | None) -> tuple[str, str]:
+    """Return (label, css_class) for the stage chip."""
+    s = (stage or "group").lower()
+    if "group" in s or s == "grupos":
+        return "Grupos", "stage-group"
+    return "Eliminatoria", "stage-knockout"
 
 
 def _get_today_matches() -> list[dict]:
@@ -136,7 +144,6 @@ def _can_edit(match: dict) -> bool:
         # No kickoff time = assume editable (TBD matches)
         return True
     kickoff = datetime.fromisoformat(kt)
-    # Ensure both are offset-aware for comparison
     if kickoff.tzinfo is None:
         kickoff = kickoff.replace(tzinfo=timezone.utc)
     now = _now_utc()
@@ -148,9 +155,16 @@ def _is_finished(match: dict) -> bool:
     return match.get("status") == "finished"
 
 
+def _team_label(flag: str, name: str) -> None:
+    """Left side of a team row: flag + country name (truncates on overflow)."""
+    with ui.row().classes("items-center gap-2 min-w-0 flex-1 flex-nowrap"):
+        ui.label(flag).classes("flag-display")
+        ui.label(name).classes("team-name")
+
+
 def hoy_page() -> None:
     """Render today's matches with predictions, lock-on-kickoff, finished view."""
-    container = ui.column().classes("w-full")
+    container = ui.column().classes("w-full gap-0")
     player_id = app.storage.user.get("player_id")
 
     def refresh():
@@ -159,14 +173,14 @@ def hoy_page() -> None:
             matches = _get_today_matches()
 
             if not matches:
-                ui.label("🎉 ¡No hay partidos programados para hoy!").classes(
-                    "text-gray-400 text-center w-full mt-8"
+                ui.label("🎉 ¡No hay partidos hoy!").classes(
+                    "text-dim text-center w-full mt-8"
                 )
                 return
 
-            ui.label("Partidos de hoy").classes("text-xl font-bold w-full mb-4")
-
-            now = _now_utc()
+            ui.label("Partidos de hoy").classes(
+                "text-lg font-bold w-full mb-2 px-1"
+            )
 
             for m in matches:
                 home = m.get("home")
@@ -177,8 +191,9 @@ def hoy_page() -> None:
                 finished = _is_finished(m)
                 k_str = _kickoff_str(m)
                 match_id = m["id"]
+                is_tbd = home is None or away is None
+                badge_text, badge_cls = _stage_badge(m.get("stage"))
 
-                # ── Fetch existing prediction & score ──
                 existing = None
                 points = None
                 if player_id:
@@ -186,183 +201,138 @@ def hoy_page() -> None:
                     if finished:
                         points = _get_match_score(player_id, match_id)
 
-                # ── Card ──
-                with ui.card().classes("w-full mb-3 p-4 match-card"):
-                    # ── Header row: teams + kickoff ──
+                with ui.card().classes("w-full mb-2 p-3 match-card"):
+                    # ── Top row: stage badge + kickoff ──
                     with ui.row().classes("w-full items-center justify-between"):
-                        with ui.row().classes("items-center gap-3"):
-                            ui.label(home_flag).classes("flag-display")
-                            ui.label(
-                                home if home else "TBD"
-                            ).classes("text-lg font-bold")
-                            ui.label("vs").classes("vs-divider mx-1")
-                            ui.label(
-                                away if away else "TBD"
-                            ).classes("text-lg font-bold")
-                            ui.label(away_flag).classes("flag-display")
+                        ui.label(badge_text).classes(f"stage-badge {badge_cls}")
                         if k_str:
-                            ui.label(k_str).classes("match-time")
+                            ui.label(f"🕑 {k_str}").classes("match-time")
 
-                    # ── TBD handling ──
-                    if home is None or away is None:
-                        ui.label(
-                            "🔒 Equipos por confirmar"
-                        ).classes("text-sm text-amber-500 mt-2")
-                        with ui.row().classes("w-full justify-end mt-1"):
-                            stage = m.get("stage", "group") or "group"
-                            badge_class = f"stage-badge stage-{stage}"
-                            ui.label(stage.upper()).classes(badge_class)
-                        continue
-
-                    # ── Finished match: show real score vs prediction + points ──
-                    if finished:
-                        goals_h = m.get("goals_home")
-                        goals_a = m.get("goals_away")
-
-                        with ui.row().classes("w-full items-center gap-4 mt-3"):
-                            # Real result
-                            with ui.column().classes("items-center"):
-                                ui.label("Real").classes(
-                                    "text-xs text-gray-500"
-                                )
-                                real_str = (
-                                    f"{goals_h} - {goals_a}"
-                                    if goals_h is not None
-                                    and goals_a is not None
-                                    else "? - ?"
-                                )
-                                ui.label(real_str).classes(
-                                    "text-xl font-bold"
-                                )
-
-                            # Prediction
-                            with ui.column().classes("items-center"):
-                                ui.label("Tu predicción").classes(
-                                    "text-xs text-gray-500"
-                                )
-                                if existing:
-                                    pred_str = (
-                                        f"{existing['pred_home']} - "
-                                        f"{existing['pred_away']}"
-                                    )
-                                else:
-                                    pred_str = "—"
-                                ui.label(pred_str).classes(
-                                    "text-lg"
-                                )
-
-                            # Points
-                            with ui.column().classes("items-center"):
-                                ui.label("Puntos").classes(
-                                    "text-xs text-gray-500"
-                                )
-                                pts_str = (
-                                    str(points) if points is not None else "—"
-                                )
-                                ui.label(pts_str).classes(
-                                    "text-lg font-bold text-amber-400"
-                                )
-
-                        # ── Stage badge ──
-                        with ui.row().classes("w-full justify-end mt-2"):
-                            stage = m.get("stage", "group") or "group"
-                            badge_class = f"stage-badge stage-{stage}"
-                            ui.label(stage.upper()).classes(badge_class)
-                        continue
-
-                    # ── Editable / locked state ──
-                    with ui.row().classes("w-full items-center gap-3 mt-3"):
-                        goals_home_input = (
-                            ui.number(
-                                label="Goles local",
-                                value=(
-                                    existing["pred_home"]
-                                    if existing
-                                    else 0
-                                ),
-                                min=0,
-                                max=100,
-                            )
-                            .props("outlined dense")
-                            .classes("w-24")
-                        )
-                        goals_away_input = (
-                            ui.number(
-                                label="Goles visitante",
-                                value=(
-                                    existing["pred_away"]
-                                    if existing
-                                    else 0
-                                ),
-                                min=0,
-                                max=100,
-                            )
-                            .props("outlined dense")
-                            .classes("w-24")
-                        )
-
-                        if not can_edit:
-                            goals_home_input.disable()
-                            goals_away_input.disable()
-                            ui.label("🔒 Partido iniciado").classes(
-                                "text-sm text-amber-500 ml-2"
-                            )
-                        else:
-                            # ── Feedback label ──
-                            saved_label = ui.label("").classes(
-                                "text-xs text-green-500"
-                            )
-
-                            # ── Validation error label ──
-                            error_label = ui.label("").classes(
-                                "text-xs text-red-500"
-                            )
-
-                            def make_save(
-                                mid=match_id,
-                                gh=goals_home_input,
-                                ga=goals_away_input,
-                                lbl=saved_label,
-                                err=error_label,
+                    # ── TBD: equipos por confirmar ──
+                    if is_tbd:
+                        for fl in (home_flag, away_flag):
+                            with ui.row().classes(
+                                "w-full items-center gap-2 mt-2 flex-nowrap"
                             ):
-                                def save():
-                                    val_h = int(gh.value)
-                                    val_a = int(ga.value)
-                                    if not (0 <= val_h <= 100 and 0 <= val_a <= 100):
-                                        err.set_text(
-                                            "⚠️ Valores deben ser 0-100"
-                                        )
-                                        lbl.set_text("")
-                                        return
-                                    err.set_text("")
-                                    ok = _save_prediction(
-                                        player_id, mid, val_h, val_a
-                                    )
-                                    if ok:
-                                        lbl.set_text("✅ Guardado")
-                                    else:
-                                        err.set_text("❌ Error al guardar")
-
-                                return save
-
-                            btn_label = (
-                                "Editar" if existing else "Guardar"
-                            )
-                            btn_icon = "edit" if existing else "save"
-                            ui.button(
-                                btn_label,
-                                icon=btn_icon,
-                                on_click=make_save(),
-                            ).props("flat dense").classes("ml-2")
-
-                    # ── Stage badge ──
-                    with ui.row().classes("w-full justify-end mt-1"):
-                        stage = m.get("stage", "group") or "group"
-                        ui.label(stage.upper()).classes(
-                            "text-xs text-gray-500 bg-gray-800 rounded px-2 py-0.5"
+                                ui.label("🏳️").classes("flag-display")
+                                ui.label("Por confirmar").classes(
+                                    "team-name text-dim"
+                                )
+                        ui.label("🔒 Equipos por confirmar").classes(
+                            "text-xs text-amber-500 mt-2"
                         )
+                        continue
+
+                    # ── Finished: real score per team + prediction + points ──
+                    if finished:
+                        gh = m.get("goals_home")
+                        ga = m.get("goals_away")
+                        with ui.row().classes(
+                            "w-full items-center justify-between gap-2 mt-2 flex-nowrap"
+                        ):
+                            _team_label(home_flag, home)
+                            ui.label("?" if gh is None else str(gh)).classes(
+                                "score-final"
+                            )
+                        with ui.row().classes(
+                            "w-full items-center justify-between gap-2 mt-1 flex-nowrap"
+                        ):
+                            _team_label(away_flag, away)
+                            ui.label("?" if ga is None else str(ga)).classes(
+                                "score-final"
+                            )
+                        with ui.row().classes(
+                            "w-full items-center justify-between mt-2"
+                        ):
+                            if existing:
+                                ui.label(
+                                    f"Tu pronóstico: {existing['pred_home']}–"
+                                    f"{existing['pred_away']}"
+                                ).classes("text-xs text-dim")
+                            else:
+                                ui.label("Sin pronóstico").classes(
+                                    "text-xs text-dim"
+                                )
+                            pts = points if points is not None else "—"
+                            ui.label(f"🏆 {pts} pts").classes("points-badge")
+                        continue
+
+                    # ── Editable / locked: one input per team ──
+                    with ui.row().classes(
+                        "w-full items-center justify-between gap-2 mt-2 flex-nowrap"
+                    ):
+                        _team_label(home_flag, home)
+                        home_input = (
+                            ui.number(
+                                value=existing["pred_home"] if existing else 0,
+                                min=0,
+                                max=100,
+                            )
+                            .props("outlined dense")
+                            .classes("score-input")
+                        )
+                    with ui.row().classes(
+                        "w-full items-center justify-between gap-2 mt-1 flex-nowrap"
+                    ):
+                        _team_label(away_flag, away)
+                        away_input = (
+                            ui.number(
+                                value=existing["pred_away"] if existing else 0,
+                                min=0,
+                                max=100,
+                            )
+                            .props("outlined dense")
+                            .classes("score-input")
+                        )
+
+                    if not can_edit:
+                        home_input.disable()
+                        away_input.disable()
+                        ui.label("🔒 Partido iniciado").classes(
+                            "text-xs text-amber-500 mt-2"
+                        )
+                        continue
+
+                    # ── Save row ──
+                    with ui.row().classes(
+                        "w-full items-center justify-between mt-2"
+                    ):
+                        feedback = ui.label("").classes("text-xs")
+
+                        def make_save(
+                            mid=match_id,
+                            gh_in=home_input,
+                            ga_in=away_input,
+                            lbl=feedback,
+                        ):
+                            def save():
+                                val_h = int(gh_in.value or 0)
+                                val_a = int(ga_in.value or 0)
+                                if not (0 <= val_h <= 100 and 0 <= val_a <= 100):
+                                    lbl.classes(
+                                        remove="text-green-500", add="text-red-500"
+                                    )
+                                    lbl.set_text("⚠️ Valores 0–100")
+                                    return
+                                ok = _save_prediction(player_id, mid, val_h, val_a)
+                                if ok:
+                                    lbl.classes(
+                                        remove="text-red-500", add="text-green-500"
+                                    )
+                                    lbl.set_text("✅ Guardado")
+                                else:
+                                    lbl.classes(
+                                        remove="text-green-500", add="text-red-500"
+                                    )
+                                    lbl.set_text("❌ Error")
+
+                            return save
+
+                        ui.button(
+                            "Editar" if existing else "Guardar",
+                            icon="edit" if existing else "save",
+                            on_click=make_save(),
+                        ).props("unelevated dense").classes("btn-save")
 
     refresh()
-
-    # Auto-refresh every 60 seconds
     ui.timer(60, refresh)

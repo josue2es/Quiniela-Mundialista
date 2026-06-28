@@ -15,6 +15,9 @@ venv/
 *.db-journal
 *.db-wal
 
+# NiceGUI runtime storage
+.nicegui/
+
 # IDE
 .idea/
 .vscode/

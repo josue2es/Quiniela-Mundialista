@@ -143,19 +143,13 @@ def standings_page() -> None:
                 ).classes("text-gray-400 text-sm text-center w-full")
                 return
 
-            # ── Table ──
+            # ── Table (mobile-first: dense, short headers) ──
             columns = [
-                {"name": "pos", "label": "#", "field": "pos", "align": "left"},
-                {"name": "flag", "label": "", "field": "flag", "align": "left"},
+                {"name": "pos", "label": "#", "field": "pos", "align": "center"},
                 {"name": "name", "label": "Jugador", "field": "name", "align": "left"},
-                {
-                    "name": "total",
-                    "label": "Total",
-                    "field": "total",
-                    "align": "left",
-                },
-                {"name": "hoy", "label": "+Hoy", "field": "hoy", "align": "left"},
-                {"name": "delta", "label": "Δ", "field": "delta", "align": "left"},
+                {"name": "total", "label": "Pts", "field": "total", "align": "center"},
+                {"name": "hoy", "label": "+Hoy", "field": "hoy", "align": "center"},
+                {"name": "delta", "label": "Δ", "field": "delta", "align": "center"},
             ]
 
             rows_data = []
@@ -163,8 +157,8 @@ def standings_page() -> None:
                 rows_data.append(
                     {
                         "pos": s["rank"],
-                        "flag": s["avatar_flag"],
-                        "name": s["player_name"],
+                        # Bandera + nombre juntos en una sola columna (ahorra ancho)
+                        "name": f"{s['avatar_flag']}  {s['player_name']}",
                         "total": s["total_points"],
                         "hoy": (
                             f"+{s['hoy_points']}"
@@ -179,7 +173,7 @@ def standings_page() -> None:
                 columns=columns,
                 rows=rows_data,
                 row_key="name",
-            ).classes("w-full")
+            ).props("dense flat").classes("w-full standings-table")
 
     refresh_standings()
 

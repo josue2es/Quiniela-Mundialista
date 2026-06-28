@@ -72,112 +72,132 @@ PLAYERS = [
 ]
 
 
-def _build_matches(today, tomorrow):
-    """Construye los partidos de demostración (hoy + mañana)."""
-    now = datetime.now(UTC)
+# Cierre de fase de grupos HOY (equipos eliminados) — alimentan la tabla.
+# (ext_id, home, home_flag, away, away_flag)
+GROUP_TODAY = [
+    ("demo-grp-01", "Túnez", "🇹🇳", "Argelia", "🇩🇿"),     # finalizado 1-1
+    ("demo-grp-02", "Egipto", "🇪🇬", "Catar", "🇶🇦"),      # finalizado 2-0
+    ("demo-grp-03", "Panamá", "🇵🇦", "Honduras", "🇭🇳"),   # en juego (bloqueado)
+    ("demo-grp-04", "Paraguay", "🇵🇾", "Chile", "🇨🇱"),    # más tarde (editable)
+]
 
-    return [
-        # ── HOY: finalizados (alimentan la tabla y la columna +Hoy) ──
+# Dieciseisavos de final (top 32): los 16 cruces, repartidos 4/día desde mañana.
+ROUND_OF_32 = [
+    ("Argentina", "🇦🇷", "Australia", "🇦🇺"),
+    ("Francia", "🇫🇷", "Senegal", "🇸🇳"),
+    ("Brasil", "🇧🇷", "Corea del Sur", "🇰🇷"),
+    ("Inglaterra", "🏴", "Ecuador", "🇪🇨"),
+    ("España", "🇪🇸", "Costa Rica", "🇨🇷"),
+    ("Portugal", "🇵🇹", "Ghana", "🇬🇭"),
+    ("Países Bajos", "🇳🇱", "Perú", "🇵🇪"),
+    ("Alemania", "🇩🇪", "Arabia Saudita", "🇸🇦"),
+    ("Italia", "🇮🇹", "Camerún", "🇨🇲"),
+    ("Bélgica", "🇧🇪", "Canadá", "🇨🇦"),
+    ("Croacia", "🇭🇷", "Serbia", "🇷🇸"),
+    ("Uruguay", "🇺🇾", "Polonia", "🇵🇱"),
+    ("Colombia", "🇨🇴", "Japón", "🇯🇵"),
+    ("México", "🇲🇽", "Nigeria", "🇳🇬"),
+    ("Estados Unidos", "🇺🇸", "Dinamarca", "🇩🇰"),
+    ("Marruecos", "🇲🇦", "Suiza", "🇨🇭"),
+]
+
+# Octavos de final (round of 16): 8 cruces con equipos por confirmar (TBD).
+N_ROUND_OF_16 = 8
+
+KICKOFF_HOURS_ES = [10, 13, 16, 19]  # 4 partidos por día
+
+
+def _build_matches(today, tomorrow):
+    """Construye los partidos de demostración.
+
+    - HOY: cierre de fase de grupos (2 finalizados, 1 en juego, 1 editable).
+    - DESDE MAÑANA: los 16 dieciseisavos, 4 por día durante 4 días.
+    - DESPUÉS: 8 octavos con equipos TBD para completar el bracket.
+    """
+    now = datetime.now(UTC)
+    matches: list[dict] = []
+
+    # ── HOY: cierre de grupos ──
+    g1, g2, g3, g4 = GROUP_TODAY
+    matches += [
         {
-            "external_id": "demo-r32-01",
-            "home": "Argentina", "home_flag": "🇦🇷",
-            "away": "México", "away_flag": "🇲🇽",
-            "kickoff_utc": now - timedelta(hours=4),
-            "match_date_local": today,
-            "stage": "knockout", "status": MatchStatus.FINISHED,
-            "goals_home": 2, "goals_away": 1,
+            "external_id": g1[0], "home": g1[1], "home_flag": g1[2],
+            "away": g1[3], "away_flag": g1[4],
+            "kickoff_utc": now - timedelta(hours=4), "match_date_local": today,
+            "stage": "group", "status": MatchStatus.FINISHED,
+            "goals_home": 1, "goals_away": 1,  # empate
         },
         {
-            "external_id": "demo-r32-02",
-            "home": "Francia", "home_flag": "🇫🇷",
-            "away": "Brasil", "away_flag": "🇧🇷",
-            "kickoff_utc": now - timedelta(hours=2),
-            "match_date_local": today,
-            "stage": "knockout", "status": MatchStatus.FINISHED,
-            "goals_home": 0, "goals_away": 0,  # empate (se definiría por penales)
-        },
-        # ── HOY: en juego → edición bloqueada ──
-        {
-            "external_id": "demo-r32-03",
-            "home": "Inglaterra", "home_flag": "🏴",
-            "away": "Países Bajos", "away_flag": "🇳🇱",
-            "kickoff_utc": now - timedelta(minutes=35),
-            "match_date_local": today,
-            "stage": "knockout", "status": MatchStatus.LIVE,
-        },
-        # ── HOY: programado más tarde → editable ──
-        {
-            "external_id": "demo-r32-04",
-            "home": "España", "home_flag": "🇪🇸",
-            "away": "Alemania", "away_flag": "🇩🇪",
-            "kickoff_utc": now + timedelta(hours=3),
-            "match_date_local": today,
-            "stage": "knockout", "status": MatchStatus.SCHEDULED,
-        },
-        # ── MAÑANA: dieciseisavos con equipos definidos → editables ──
-        {
-            "external_id": "demo-r32-05",
-            "home": "Portugal", "home_flag": "🇵🇹",
-            "away": "Uruguay", "away_flag": "🇺🇾",
-            "kickoff_utc": at_es(tomorrow, 10),
-            "match_date_local": tomorrow,
-            "stage": "knockout", "status": MatchStatus.SCHEDULED,
+            "external_id": g2[0], "home": g2[1], "home_flag": g2[2],
+            "away": g2[3], "away_flag": g2[4],
+            "kickoff_utc": now - timedelta(hours=2), "match_date_local": today,
+            "stage": "group", "status": MatchStatus.FINISHED,
+            "goals_home": 2, "goals_away": 0,
         },
         {
-            "external_id": "demo-r32-06",
-            "home": "Croacia", "home_flag": "🇭🇷",
-            "away": "Bélgica", "away_flag": "🇧🇪",
-            "kickoff_utc": at_es(tomorrow, 13),
-            "match_date_local": tomorrow,
-            "stage": "knockout", "status": MatchStatus.SCHEDULED,
+            "external_id": g3[0], "home": g3[1], "home_flag": g3[2],
+            "away": g3[3], "away_flag": g3[4],
+            "kickoff_utc": now - timedelta(minutes=35), "match_date_local": today,
+            "stage": "group", "status": MatchStatus.LIVE,
         },
         {
-            "external_id": "demo-r32-07",
-            "home": "Colombia", "home_flag": "🇨🇴",
-            "away": "Japón", "away_flag": "🇯🇵",
-            "kickoff_utc": at_es(tomorrow, 16),
-            "match_date_local": tomorrow,
-            "stage": "knockout", "status": MatchStatus.SCHEDULED,
-        },
-        {
-            "external_id": "demo-r32-08",
-            "home": "Marruecos", "home_flag": "🇲🇦",
-            "away": "Estados Unidos", "away_flag": "🇺🇸",
-            "kickoff_utc": at_es(tomorrow, 19),
-            "match_date_local": tomorrow,
-            "stage": "knockout", "status": MatchStatus.SCHEDULED,
-        },
-        # ── MAÑANA: octavos placeholder → TBD, inputs bloqueados ──
-        {
-            "external_id": "demo-r16-01",
-            "home": None, "home_flag": None,
-            "away": None, "away_flag": None,
-            "kickoff_utc": at_es(tomorrow, 21),
-            "match_date_local": tomorrow,
-            "stage": "knockout", "status": MatchStatus.SCHEDULED,
+            "external_id": g4[0], "home": g4[1], "home_flag": g4[2],
+            "away": g4[3], "away_flag": g4[4],
+            "kickoff_utc": now + timedelta(hours=3), "match_date_local": today,
+            "stage": "group", "status": MatchStatus.SCHEDULED,
         },
     ]
 
+    # ── DIECISEISAVOS: 16 partidos, 4/día desde mañana ──
+    for i, (home, hflag, away, aflag) in enumerate(ROUND_OF_32):
+        day = tomorrow + timedelta(days=i // 4)
+        hour = KICKOFF_HOURS_ES[i % 4]
+        matches.append({
+            "external_id": f"demo-r32-{i + 1:02d}",
+            "home": home, "home_flag": hflag,
+            "away": away, "away_flag": aflag,
+            "kickoff_utc": at_es(day, hour),
+            "match_date_local": day,
+            "stage": "knockout", "status": MatchStatus.SCHEDULED,
+        })
+
+    # ── OCTAVOS: 8 partidos TBD (equipos por confirmar), tras los dieciseisavos ──
+    r16_start = tomorrow + timedelta(days=5)  # día de descanso entre rondas
+    for i in range(N_ROUND_OF_16):
+        day = r16_start + timedelta(days=i // 4)
+        hour = KICKOFF_HOURS_ES[i % 4]
+        matches.append({
+            "external_id": f"demo-r16-{i + 1:02d}",
+            "home": None, "home_flag": None,
+            "away": None, "away_flag": None,
+            "kickoff_utc": at_es(day, hour),
+            "match_date_local": day,
+            "stage": "knockout", "status": MatchStatus.SCHEDULED,
+        })
+
+    return matches
+
 
 # Predicciones de partidos FINALIZADOS, por nombre de jugador.
-# (external_id → (pred_home, pred_away))
+# (external_id → (pred_home, pred_away)). Reales: grp-01 = 1-1, grp-02 = 2-0.
 FINISHED_PREDICTIONS = {
-    "Cuestas":  {"demo-r32-01": (2, 1), "demo-r32-02": (0, 0)},  # 3 + 3 = 6
-    "Vega":     {"demo-r32-01": (1, 0), "demo-r32-02": (1, 1)},  # 2 + 2 = 4
-    "Chepe":    {"demo-r32-01": (0, 2), "demo-r32-02": (2, 1)},  # 1 + 1 = 2
-    "Mamer":    {"demo-r32-01": (3, 1), "demo-r32-02": (0, 0)},  # 2 + 3 = 5
-    "Josue":    {"demo-r32-01": (2, 1), "demo-r32-02": (1, 0)},  # 3 + 1 = 4
-    "Tony":     {"demo-r32-01": (1, 1), "demo-r32-02": (2, 2)},  # 1 + 2 = 3
-    "Colocha":  {"demo-r32-01": (2, 0)},                          # 2 (+1 sin pred)
-    "Jaime":    {"demo-r32-01": (2, 1)},                          # 3 (+1 sin pred)
-    # Frank, Mumuja, Chicapan: sin predicciones → 1 punto por partido
+    "Cuestas":  {"demo-grp-01": (1, 1), "demo-grp-02": (2, 0)},  # 3 + 3 = 6
+    "Vega":     {"demo-grp-01": (0, 0), "demo-grp-02": (1, 0)},  # 2 + 2 = 4
+    "Chepe":    {"demo-grp-01": (2, 0), "demo-grp-02": (0, 2)},  # 1 + 1 = 2
+    "Mamer":    {"demo-grp-01": (1, 1), "demo-grp-02": (3, 1)},  # 3 + 2 = 5
+    "Josue":    {"demo-grp-01": (1, 1), "demo-grp-02": (0, 0)},  # 3 + 1 = 4
+    "Tony":     {"demo-grp-01": (2, 2), "demo-grp-02": (1, 1)},  # 2 + 1 = 3
+    "Colocha":  {"demo-grp-01": (1, 1)},                          # 3 (+1 sin pred) = 4
+    "Jaime":    {"demo-grp-01": (1, 1)},                          # 3 (+1 sin pred) = 4
+    # Frank, Mumuja, Chicapan: sin predicciones → 1 punto por partido (= 2)
 }
 
-# Predicciones de partidos PROGRAMADOS (para mostrar botón "Editar" vs "Guardar").
+# Predicciones de dieciseisavos (programados) para mostrar "Editar" vs "Guardar".
 SCHEDULED_PREDICTIONS = {
-    "Cuestas": {"demo-r32-05": (2, 1), "demo-r32-04": (1, 1)},
-    "Josue":   {"demo-r32-06": (1, 1)},
-    "Vega":    {"demo-r32-05": (0, 0)},
+    "Cuestas": {"demo-r32-01": (2, 0), "demo-r32-04": (1, 1)},
+    "Josue":   {"demo-r32-02": (3, 0)},
+    "Vega":    {"demo-r32-03": (1, 2)},
+    "Mamer":   {"demo-r32-01": (1, 1)},
 }
 
 
@@ -283,7 +303,9 @@ def seed():
         print(f"✅ {snap_count} snapshots de ayer insertados")
 
     print("\n🎉 Seed de demostración listo.")
-    print(f"   Hoy ES: {today}  |  Mañana ES: {tomorrow}")
+    print(f"   Hoy ES: {today} (cierre de grupos)  |  Mañana ES: {tomorrow} (inician dieciseisavos)")
+    print(f"   Dieciseisavos: {len(ROUND_OF_32)} partidos del {tomorrow} al {tomorrow + timedelta(days=3)}")
+    print(f"   Octavos (TBD): {N_ROUND_OF_16} partidos desde {tomorrow + timedelta(days=5)}")
     print("   Credenciales de ejemplo:")
     print("     Cuestas / 1234   ·   Josue / 5678   ·   Vega / 2345")
     print("   Levantá la app con:  uv run python main.py")

@@ -88,7 +88,7 @@ def login_page():
     ui.add_head_html(DARK_CSS)
 
     # ── Paso 1: Login ──
-    login_card = ui.card().classes("mx-auto mt-20 w-96 p-6")
+    login_card = ui.card().classes("mx-auto mt-16 w-11/12 max-w-sm p-6")
 
     with login_card:
         ui.label("⚽ Quiniela Mundialista").classes("text-2xl font-bold text-center w-full mb-1 page-title")
@@ -108,7 +108,7 @@ def login_page():
             label="Contraseña (4 dígitos)",
             password=True,
             password_toggle_button=True,
-        ).props('type="number" maxlength="4"').classes("w-full")
+        ).props('type="number" maxlength="4" outlined').classes("w-full")
 
         login_error = ui.label("").classes("text-red-500 text-sm mt-0 hidden")
 
