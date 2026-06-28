@@ -14,6 +14,7 @@ from sqlalchemy import and_
 
 from data.database import SessionLocal
 from data.models import Match, Prediction
+from ui import safe_timer
 
 TZ_ES = ZoneInfo("America/El_Salvador")
 
@@ -239,4 +240,4 @@ def manana_page() -> None:
                         ).props("unelevated dense").classes("btn-save")
 
     refresh()
-    ui.timer(45, refresh)
+    safe_timer(45, refresh)

@@ -16,6 +16,7 @@ from sqlalchemy import and_
 
 from data.database import SessionLocal
 from data.models import Match, MatchScore, Prediction
+from ui import safe_timer
 
 TZ_ES = ZoneInfo("America/El_Salvador")
 
@@ -351,4 +352,4 @@ def hoy_page() -> None:
                         ).props("unelevated dense").classes("btn-save")
 
     refresh()
-    ui.timer(60, refresh)
+    safe_timer(60, refresh)

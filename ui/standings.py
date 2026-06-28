@@ -13,6 +13,7 @@ from sqlalchemy import func
 
 from data.database import SessionLocal
 from data.models import Match, MatchScore, StandingsSnapshot, Player
+from ui import safe_timer
 
 TZ_ES = ZoneInfo("America/El_Salvador")
 
@@ -183,4 +184,4 @@ def standings_page() -> None:
     refresh_standings()
 
     # Auto-refresh every 45 seconds
-    ui.timer(45, refresh_standings)
+    safe_timer(45, refresh_standings)

@@ -166,7 +166,15 @@ async def sync_fixtures(
     target_dates = {today, tomorrow}
     relevant: list = []
     for pm in fixtures_raw:
-        match_date_es = _kickoff_to_es_date(pm.kickoff_utc)
+        # Un fixture con kickoff inválido se loguea y se salta (no aborta la sync).
+        try:
+            match_date_es = _kickoff_to_es_date(pm.kickoff_utc)
+        except Exception:
+            logger.exception(
+                "sync_fixtures: fixture %s con kickoff inválido, se salta",
+                getattr(pm, "external_id", "?"),
+            )
+            continue
         if match_date_es in target_dates:
             relevant.append(pm)
 
@@ -188,68 +196,87 @@ async def sync_fixtures(
     session = session_factory()
     try:
         for pm in relevant:
-            match_date_local = _kickoff_to_es_date(pm.kickoff_utc)
-            existing = (
-                session.query(Match)
-                .filter_by(external_id=pm.external_id)
-                .first()
-            )
-
-            if existing:
-                changed = False
-
-                # Resolver TBD (§3: equipos se rellenan cuando el proveedor los da)
-                if existing.home is None and pm.home_team is not None:
-                    existing.home = pm.home_team
-                    changed = True
-                    tbd_resolved += 1
-                if existing.away is None and pm.away_team is not None:
-                    existing.away = pm.away_team
-                    changed = True
-
-                # Flags
-                if pm.home_flag and existing.home_flag != pm.home_flag:
-                    existing.home_flag = pm.home_flag
-                    changed = True
-                if pm.away_flag and existing.away_flag != pm.away_flag:
-                    existing.away_flag = pm.away_flag
-                    changed = True
-
-                # Stage
-                if pm.stage and existing.stage != pm.stage:
-                    existing.stage = pm.stage
-                    changed = True
-
-                # Status
-                new_status = _map_status(pm.status)
-                if existing.status != new_status:
-                    existing.status = new_status
-                    changed = True
-
-                # Kickoff time
-                if (existing.kickoff_utc is None
-                        or abs((pm.kickoff_utc - existing.kickoff_utc).total_seconds()) > 60):
-                    existing.kickoff_utc = pm.kickoff_utc
-                    existing.match_date_local = match_date_local
-                    changed = True
-
-                if changed:
-                    updated += 1
-            else:
-                session.add(
-                    Match(
-                        external_id=pm.external_id,
-                        home=pm.home_team,
-                        away=pm.away_team,
-                        home_flag=pm.home_flag,
-                        away_flag=pm.away_flag,
-                        kickoff_utc=pm.kickoff_utc,
-                        match_date_local=match_date_local,
-                        stage=pm.stage,
-                        status=_map_status(pm.status),
-                    )
+            # Un fixture problemático se loguea y se salta, sin abortar la sync.
+            try:
+                match_date_local = _kickoff_to_es_date(pm.kickoff_utc)
+                existing = (
+                    session.query(Match)
+                    .filter_by(external_id=pm.external_id)
+                    .first()
                 )
-                inserted += 1
+
+                if existing:
+                    changed = False
+
+                    # Resolver TBD (§3: equipos se rellenan cuando el proveedor los da)
+                    if existing.home is None and pm.home_team is not None:
+                        existing.home = pm.home_team
+                        changed = True
+                        tbd_resolved += 1
+                    if existing.away is None and pm.away_team is not None:
+                        existing.away = pm.away_team
+                        changed = True
+
+                    # Flags
+                    if pm.home_flag and existing.home_flag != pm.home_flag:
+                        existing.home_flag = pm.home_flag
+                        changed = True
+                    if pm.away_flag and existing.away_flag != pm.away_flag:
+                        existing.away_flag = pm.away_flag
+                        changed = True
+
+                    # Stage
+                    if pm.stage and existing.stage != pm.stage:
+                        existing.stage = pm.stage
+                        changed = True
+
+                    # Status
+                    new_status = _map_status(pm.status)
+                    if existing.status != new_status:
+                        existing.status = new_status
+                        changed = True
+
+                    # Kickoff time — normalizar AMBOS a aware UTC antes de restar.
+                    # El provider trae aware; SQLite devuelve naive (no preserva tz),
+                    # y Python no permite restar naive - aware.
+                    existing_kt = existing.kickoff_utc
+                    if existing_kt is not None and existing_kt.tzinfo is None:
+                        existing_kt = existing_kt.replace(tzinfo=UTC)
+                    pm_kt = pm.kickoff_utc
+                    if pm_kt is not None and pm_kt.tzinfo is None:
+                        pm_kt = pm_kt.replace(tzinfo=UTC)
+
+                    if pm_kt is not None and (
+                        existing_kt is None
+                        or abs((pm_kt - existing_kt).total_seconds()) > 60
+                    ):
+                        existing.kickoff_utc = pm.kickoff_utc
+                        existing.match_date_local = match_date_local
+                        changed = True
+
+                    if changed:
+                        updated += 1
+                else:
+                    session.add(
+                        Match(
+                            external_id=pm.external_id,
+                            home=pm.home_team,
+                            away=pm.away_team,
+                            home_flag=pm.home_flag,
+                            away_flag=pm.away_flag,
+                            kickoff_utc=pm.kickoff_utc,
+                            match_date_local=match_date_local,
+                            stage=pm.stage,
+                            status=_map_status(pm.status),
+                        )
+                    )
+                    inserted += 1
+            except Exception:
+                logger.exception(
+                    "sync_fixtures: saltando fixture %s por error",
+                    getattr(pm, "external_id", "?"),
+                )
+                continue
 
         session.commit()
         logger.info(

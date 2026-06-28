@@ -18,6 +18,7 @@ from nicegui import ui
 
 from data.database import SessionLocal
 from data.models import Match, MatchScore, MatchStatus, Player, Prediction
+from ui import safe_timer
 
 TZ_ES = ZoneInfo("America/El_Salvador")
 
@@ -149,4 +150,4 @@ def apuestas_page() -> None:
                     ).classes("w-full standings-table mt-2")
 
     refresh()
-    ui.timer(60, refresh)
+    safe_timer(60, refresh)
