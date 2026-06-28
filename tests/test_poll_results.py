@@ -141,14 +141,14 @@ class TestScoreMatch:
             scores = session.query(MatchScore).filter_by(match_id=match).all()
             assert len(scores) == 11
 
-    def test_no_prediction_gets_one_point(self, db_session, players, match):
-        """Jugadores sin predicción reciben 1 punto."""
+    def test_no_prediction_gets_zero_points(self, db_session, players, match):
+        """Jugadores sin predicción reciben 0 puntos."""
         rows = _score_match(db_session, match_id=match, goals_home=3, goals_away=1)
 
         with db_session() as session:
             scores = session.query(MatchScore).filter_by(match_id=match).all()
             for s in scores:
-                assert s.points == 1, f"Sin predicción, esperado 1, obtuvo {s.points}"
+                assert s.points == 0, f"Sin predicción, esperado 0, obtuvo {s.points}"
 
     def test_with_predictions_respects_scoring(self, db_session, players, match):
         """Con predicciones usa score() del módulo de scoring."""
@@ -156,9 +156,9 @@ class TestScoreMatch:
         with db_session() as session:
             all_players = session.query(Player).all()
             preds = [
-                Prediction(player_id=all_players[0].id, match_id=match, pred_home=2, pred_away=0),  # exacto → 3
+                Prediction(player_id=all_players[0].id, match_id=match, pred_home=2, pred_away=0),  # exacto → 4
                 Prediction(player_id=all_players[1].id, match_id=match, pred_home=3, pred_away=0),  # outcome H → 2
-                Prediction(player_id=all_players[2].id, match_id=match, pred_home=0, pred_away=1),  # outcome A → 1
+                Prediction(player_id=all_players[2].id, match_id=match, pred_home=0, pred_away=1),  # outcome A → 0
             ]
             session.add_all(preds)
             session.commit()
@@ -173,15 +173,15 @@ class TestScoreMatch:
                 for s in session.query(MatchScore).filter_by(match_id=match).all()
             }
 
-        # Jugador 0: predijo exacto 2-0 → 3 puntos
-        assert scores[all_players[0].id] == 3
+        # Jugador 0: predijo exacto 2-0 → 4 puntos
+        assert scores[all_players[0].id] == 4
         # Jugador 1: predijo 3-0 (outcome H correcto) → 2 puntos
         assert scores[all_players[1].id] == 2
-        # Jugador 2: predijo 0-1 (outcome A incorrecto) → 1 punto
-        assert scores[all_players[2].id] == 1
-        # Jugadores 3-10: sin predicción → 1 punto
+        # Jugador 2: predijo 0-1 (outcome A incorrecto) → 0 puntos
+        assert scores[all_players[2].id] == 0
+        # Jugadores 3-10: sin predicción → 0 puntos
         for i in range(3, 11):
-            assert scores[all_players[i].id] == 1
+            assert scores[all_players[i].id] == 0
 
     def test_idempotent(self, db_session, players, match):
         """Segunda ejecución no inserta duplicados."""
@@ -270,12 +270,12 @@ class TestPollResults:
                 for s in session.query(MatchScore).filter_by(match_id=match).all()
             }
 
-        # Los 5 con predicción exacta → 3 puntos
+        # Los 5 con predicción exacta → 4 puntos
         for i in range(5):
-            assert scores[all_players[i].id] == 3, f"Player {i}: expected 3"
-        # Los 6 sin predicción → 1 punto
+            assert scores[all_players[i].id] == 4, f"Player {i}: expected 4"
+        # Los 6 sin predicción → 0 puntos
         for i in range(5, 11):
-            assert scores[all_players[i].id] == 1, f"Player {i}: expected 1"
+            assert scores[all_players[i].id] == 0, f"Player {i}: expected 0"
 
     async def test_idempotent_full_flow(self, db_session, players, match):
         """Ejecutar poll_results dos veces no duplica."""

@@ -5,7 +5,7 @@ When a result comes back as finished: save goals (no penalties) and trigger scor
 
 The scoring trigger (D3): when a match transitions to finished, compute
 match_scores for all 11 players — those with predictions get scored via
-scoring.quiniela.score(), those without get 1 point. One row per
+scoring.quiniela.score(), those without get 0 points. One row per
 player-match.
 """
 
@@ -50,7 +50,7 @@ def _score_match(
       - Query every player (all 11).
       - For each player, look for a prediction on this match.
       - If a prediction exists: score(pred_home, pred_away, goals_home, goals_away).
-      - If no prediction: score(None, None, …) → 1 point.
+      - If no prediction: score(None, None, …) → 0 points.
       - One MatchScore row per player-match. Idempotent: skips players who
         already have a MatchScore row for this match.
 
@@ -98,7 +98,7 @@ def _score_match(
                     res_away=goals_away,
                 )
             else:
-                points = 1  # no prediction → 1 point
+                points = 0  # no prediction → 0 points
 
             session.add(
                 MatchScore(

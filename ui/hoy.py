@@ -133,6 +133,10 @@ def _kickoff_str(match: dict) -> str:
     if not kt:
         return ""
     dt = datetime.fromisoformat(kt)
+    # kickoff_utc puede ser naive (sin tzinfo): forzar UTC antes de convertir,
+    # igual que _can_edit, si no .astimezone() asume hora local del sistema.
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
     dt_es = dt.astimezone(TZ_ES)
     return dt_es.strftime("%H:%M")
 

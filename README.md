@@ -32,13 +32,13 @@ de proveedor intercambiable.
 
 ## Reglas de puntuación
 
-Reglas excluyentes, con piso de 1 punto (`scoring/quiniela.py`):
+Reglas excluyentes (`scoring/quiniela.py`):
 
 | Resultado de la predicción | Puntos |
 |---|---|
-| Marcador exacto | **3** |
-| Resultado correcto (ganador/empate), marcador distinto | **2** |
-| Resultado incorrecto **o** sin predicción | **1** |
+| Marcador exacto | **4** |
+| Acierta el resultado (ganador/empate), marcador distinto | **2** |
+| No acierta **o** sin predicción | **0** |
 
 **Penales:** se usa el marcador reglamentario / de prórroga (`goals`), **sin** contar
 penales. Un 1-1 que se define por penales cuenta como **empate** para la puntuación.
