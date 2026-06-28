@@ -7,6 +7,7 @@ Imports the authoritative models from data.models.
 import csv
 import os
 from collections.abc import Generator
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
@@ -42,8 +43,29 @@ def get_session() -> Generator[Session, None, None]:
         session.close()
 
 
-def init_db():
+@contextmanager
+def session_scope() -> Generator[Session, None, None]:
+    """Transactional scope: commits on success, rolls back on error, always closes."""
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def init_db(drop_all: bool = False):
+    """Create all tables (and optionally drop them first).
+
+    Args:
+        drop_all: If True, drops every table before recreating (destructive).
+    """
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    if drop_all:
+        Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 

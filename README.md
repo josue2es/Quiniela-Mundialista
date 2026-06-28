@@ -164,15 +164,10 @@ STORAGE_SECRET=<string-aleatorio-fuerte>   # requerido por app.storage.user de N
 DB_PATH=/data/quiniela.db                  # ruta del archivo SQLite
 PLAYERS_CSV=/config/players.csv            # CSV de jugadores (no se commitea)
 MATCH_PROVIDER=api_football                # api_football | balldontlie
-APIFOOTBALL_KEY=<tu-api-key>               # ⚠️ ver nota abajo
+APIFOOTBALL_KEY=<tu-api-key>               # API key del proveedor primario
 BALLDONTLIE_API_KEY=                       # opcional, proveedor fallback
 TZ=America/El_Salvador
 ```
-
-> **⚠️ Nombre de la variable de la API key:** el código lee `APIFOOTBALL_KEY`
-> (ver `provider/api_football.py`), mientras que `.env.example` la nombra
-> `API_FOOTBALL_KEY`. Usá **`APIFOOTBALL_KEY`** para que el proveedor primario
-> funcione.
 
 ### 3. Jugadores (`players.csv`)
 
@@ -199,6 +194,22 @@ uv run python main.py            # levanta la app en http://localhost:8090
 
 Al arrancar, `main.py` llama a `init_db()` y `seed_players()` automáticamente, y
 arranca los jobs del scheduler.
+
+### Datos de demostración (probar sin API key)
+
+Para ver la app poblada sin conectarte al proveedor, hay un seed de demostración
+con la ronda de **dieciseisavos** (round of 32). Calcula las fechas relativas a
+"hoy" en El Salvador, así que siempre llena las pestañas **Hoy** y **Mañana**:
+
+```bash
+uv run python scripts/seed.py    # ⚠️ reinicia la BD e inserta datos de demo
+uv run python main.py            # ingresá con, p.ej., Cuestas / 1234
+```
+
+Incluye los 11 jugadores, partidos de hoy (finalizados con marcador, uno en juego
+bloqueado y uno editable), dieciseisavos de mañana (editables + un TBD), predicciones,
+puntuaciones ya calculadas y un snapshot del día anterior para ver la columna Δ.
+El comando imprime credenciales de ejemplo al terminar.
 
 ### 5. Tests
 
@@ -243,8 +254,8 @@ app vía APScheduler.
 - **Rate limit:** el proveedor primario tiene contador local (~100 req/día) que se
   resetea a medianoche UTC. Si queda corto, subí el intervalo de `poll_results` o
   cambiá de proveedor (la interfaz lo permite).
-- `scripts/seed.py` contiene datos de demostración históricos y puede estar
-  desactualizado respecto al modelo actual; el camino de seed soportado es
-  `players.csv` + `seed_players()`.
+- **Seed:** en producción los jugadores vienen de `players.csv` (`seed_players()`,
+  upsert por nombre). Para pruebas locales, `scripts/seed.py` reinicia la BD e
+  inserta datos de demostración completos (ver sección de arriba).
 </content>
 </invoke>
