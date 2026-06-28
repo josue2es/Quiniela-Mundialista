@@ -6,7 +6,7 @@ una fila por equipo (bandera + nombre + input). Si home/away es null: mostrar
 se habilita automáticamente.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from nicegui import app, ui
@@ -101,7 +101,11 @@ def _kickoff_str(match: dict) -> str:
     kt = match.get("kickoff_utc")
     if not kt:
         return ""
-    return datetime.fromisoformat(kt).astimezone(TZ_ES).strftime("%H:%M")
+    dt = datetime.fromisoformat(kt)
+    # kickoff_utc puede ser naive: forzar UTC antes de convertir a ES.
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(TZ_ES).strftime("%H:%M")
 
 
 def _flag_el(flag: str | None) -> None:
