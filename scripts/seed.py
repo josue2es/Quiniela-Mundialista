@@ -62,7 +62,7 @@ PLAYERS = [
     {"name": "Vega",     "password": "2345", "avatar_flag": "🇧🇷", "initial_points": 5},
     {"name": "Chepe",    "password": "3456", "avatar_flag": "🇸🇻", "initial_points": 10},
     {"name": "Mamer",    "password": "4567", "avatar_flag": "🇲🇽", "initial_points": 0},
-    {"name": "Josue",    "password": "5678", "avatar_flag": "🇪🇸", "initial_points": 3},
+    {"name": "Josue",    "password": "5678", "avatar_flag": "🇪🇸", "initial_points": 3, "is_admin": True},
     {"name": "Tony",     "password": "6789", "avatar_flag": "🇫🇷", "initial_points": 8},
     {"name": "Frank",    "password": "7890", "avatar_flag": "🇩🇪", "initial_points": 12},
     {"name": "Colocha",  "password": "8901", "avatar_flag": "🇵🇹", "initial_points": 0},
@@ -219,6 +219,7 @@ def seed():
                 password=p["password"],
                 avatar_flag=p["avatar_flag"],
                 initial_points=p.get("initial_points", 0),
+                is_admin=p.get("is_admin", False),
                 is_setup=True,  # demo: ya configurados, listos para login
             )
             session.add(player)
@@ -261,7 +262,7 @@ def seed():
                     ph, pa = preds[match.external_id]
                     pts = score(ph, pa, match.goals_home, match.goals_away)
                 else:
-                    pts = 1  # sin predicción → 1 punto
+                    pts = 0  # sin predicción → 0 puntos
                 session.add(
                     MatchScore(
                         player_id=player.id,

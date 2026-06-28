@@ -44,6 +44,8 @@ class Player(Base):
     is_setup: Mapped[bool] = mapped_column(default=False)
     # Puntos iniciales (handicap) por jugador; se suman al total. Vienen del CSV.
     initial_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Admin: puede corregir predicciones de partidos cerrados. Viene del CSV.
+    is_admin: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -66,6 +68,7 @@ class Player(Base):
             "avatar_flag": self.avatar_flag,
             "is_setup": self.is_setup,
             "initial_points": self.initial_points,
+            "is_admin": self.is_admin,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -251,4 +254,45 @@ class StandingsSnapshot(Base):
         return (
             f"<StandingsSnapshot(player={self.player_id}, "
             f"date={self.snapshot_date_local}, rank={self.rank})>"
+        )
+
+
+class AdminAuditLog(Base):
+    """Registro de correcciones hechas por un admin sobre predicciones cerradas."""
+
+    __tablename__ = "admin_audit_log"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    admin_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
+    match_id: Mapped[int] = mapped_column(ForeignKey("matches.id"), nullable=False)
+    player_id: Mapped[int] = mapped_column(ForeignKey("players.id"), nullable=False)
+    old_pred_home: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    old_pred_away: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    new_pred_home: Mapped[int] = mapped_column(Integer, nullable=False)
+    new_pred_away: Mapped[int] = mapped_column(Integer, nullable=False)
+    old_points: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    new_points: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "admin_id": self.admin_id,
+            "match_id": self.match_id,
+            "player_id": self.player_id,
+            "old_pred_home": self.old_pred_home,
+            "old_pred_away": self.old_pred_away,
+            "new_pred_home": self.new_pred_home,
+            "new_pred_away": self.new_pred_away,
+            "old_points": self.old_points,
+            "new_points": self.new_points,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self) -> str:
+        return (
+            f"<AdminAuditLog(admin={self.admin_id}, match={self.match_id}, "
+            f"player={self.player_id}, {self.old_points}->{self.new_points})>"
         )
