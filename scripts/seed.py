@@ -14,7 +14,7 @@ Crea:
     + 1 placeholder TBD (octavos, equipos por confirmar → inputs bloqueados).
   - Predicciones de varios jugadores.
   - match_scores de los partidos finalizados (calculados con scoring.score()
-    para los 11 jugadores; quien no predijo recibe 1 punto).
+    para los 11 jugadores; quien no predijo recibe 0 puntos).
   - Snapshot de "ayer" para que la columna Δ de la tabla muestre flechas.
 
 Uso:
@@ -181,15 +181,15 @@ def _build_matches(today, tomorrow):
 # Predicciones de partidos FINALIZADOS, por nombre de jugador.
 # (external_id → (pred_home, pred_away)). Reales: grp-01 = 1-1, grp-02 = 2-0.
 FINISHED_PREDICTIONS = {
-    "Cuestas":  {"demo-grp-01": (1, 1), "demo-grp-02": (2, 0)},  # 3 + 3 = 6
+    "Cuestas":  {"demo-grp-01": (1, 1), "demo-grp-02": (2, 0)},  # 4 + 4 = 8
     "Vega":     {"demo-grp-01": (0, 0), "demo-grp-02": (1, 0)},  # 2 + 2 = 4
-    "Chepe":    {"demo-grp-01": (2, 0), "demo-grp-02": (0, 2)},  # 1 + 1 = 2
-    "Mamer":    {"demo-grp-01": (1, 1), "demo-grp-02": (3, 1)},  # 3 + 2 = 5
-    "Josue":    {"demo-grp-01": (1, 1), "demo-grp-02": (0, 0)},  # 3 + 1 = 4
-    "Tony":     {"demo-grp-01": (2, 2), "demo-grp-02": (1, 1)},  # 2 + 1 = 3
-    "Colocha":  {"demo-grp-01": (1, 1)},                          # 3 (+1 sin pred) = 4
-    "Jaime":    {"demo-grp-01": (1, 1)},                          # 3 (+1 sin pred) = 4
-    # Frank, Mumuja, Chicapan: sin predicciones → 1 punto por partido (= 2)
+    "Chepe":    {"demo-grp-01": (2, 0), "demo-grp-02": (0, 2)},  # 0 + 0 = 0
+    "Mamer":    {"demo-grp-01": (1, 1), "demo-grp-02": (3, 1)},  # 4 + 2 = 6
+    "Josue":    {"demo-grp-01": (1, 1), "demo-grp-02": (0, 0)},  # 4 + 0 = 4
+    "Tony":     {"demo-grp-01": (2, 2), "demo-grp-02": (1, 1)},  # 2 + 0 = 2
+    "Colocha":  {"demo-grp-01": (1, 1)},                          # 4 (+0 sin pred) = 4
+    "Jaime":    {"demo-grp-01": (1, 1)},                          # 4 (+0 sin pred) = 4
+    # Frank, Mumuja, Chicapan: sin predicciones → 0 puntos por partido (= 0)
 }
 
 # Predicciones de dieciseisavos (programados) para mostrar "Editar" vs "Guardar".

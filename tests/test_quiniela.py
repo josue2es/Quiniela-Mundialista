@@ -1,11 +1,11 @@
 """Tests para scoring/quiniela.py — §5 de la spec.
 
 Cubre los casos mínimos requeridos:
-  - Marcador exacto → 3
+  - Marcador exacto → 4
   - Resultado correcto, marcador distinto → 2
-  - Resultado incorrecto → 1
-  - Sin predicción → 1
-  - Empate exacto → 3
+  - Resultado incorrecto → 0
+  - Sin predicción → 0
+  - Empate exacto → 4
   - Penales (empate reglamentario) → según marcador
 """
 
@@ -34,15 +34,15 @@ class TestOutcome:
 
 
 class TestScore:
-    # ── Caso 1: Marcador exacto → 3 ──
+    # ── Caso 1: Marcador exacto → 4 ──
     def test_exact_match_home_win(self):
-        assert score(2, 0, 2, 0) == 3
+        assert score(2, 0, 2, 0) == 4
 
     def test_exact_match_away_win(self):
-        assert score(1, 3, 1, 3) == 3
+        assert score(1, 3, 1, 3) == 4
 
     def test_exact_draw(self):
-        assert score(2, 2, 2, 2) == 3
+        assert score(2, 2, 2, 2) == 4
 
     # ── Caso 2: Resultado correcto, marcador distinto → 2 ──
     def test_correct_outcome_different_score_home(self):
@@ -57,48 +57,48 @@ class TestScore:
         # Predice 0-0, real 1-1 → ambos son D
         assert score(0, 0, 1, 1) == 2
 
-    # ── Caso 3: Resultado incorrecto → 1 ──
+    # ── Caso 3: Resultado incorrecto → 0 ──
     def test_wrong_outcome_predicted_home_real_away(self):
-        assert score(2, 0, 0, 1) == 1
+        assert score(2, 0, 0, 1) == 0
 
     def test_wrong_outcome_predicted_away_real_home(self):
-        assert score(0, 1, 3, 0) == 1
+        assert score(0, 1, 3, 0) == 0
 
     def test_wrong_outcome_predicted_draw_real_home(self):
-        assert score(1, 1, 2, 0) == 1
+        assert score(1, 1, 2, 0) == 0
 
-    # ── Caso 4: Sin predicción → 1 ──
+    # ── Caso 4: Sin predicción → 0 ──
     def test_no_prediction_home_none(self):
-        assert score(None, 0, 2, 0) == 1
+        assert score(None, 0, 2, 0) == 0
 
     def test_no_prediction_away_none(self):
-        assert score(2, None, 2, 0) == 1
+        assert score(2, None, 2, 0) == 0
 
     def test_no_prediction_both_none(self):
-        assert score(None, None, 1, 1) == 1
+        assert score(None, None, 1, 1) == 0
 
     # ── Caso 5: Empate exacto (ya cubierto en test_exact_draw) ──
 
     # ── Caso 6: Penales — empate reglamentario → ──
     def test_penalties_draw_exact_prediction(self):
         """Partido 1-1 reglamentario, penales lo decide. Marcador reglamentario = empate."""
-        # Predicción exacta del marcador reglamentario → 3
-        assert score(1, 1, 1, 1) == 3
+        # Predicción exacta del marcador reglamentario → 4
+        assert score(1, 1, 1, 1) == 4
 
     def test_penalties_draw_wrong_margin(self):
         """Partido 1-1 reglamentario. Predijo empate pero distinto marcador → 2."""
         assert score(0, 0, 1, 1) == 2
 
     def test_penalties_draw_wrong_outcome(self):
-        """Partido 1-1 reglamentario. Predijo victoria local → 1."""
-        assert score(2, 1, 1, 1) == 1
+        """Partido 1-1 reglamentario. Predijo victoria local → 0."""
+        assert score(2, 1, 1, 1) == 0
 
     # ── Edge cases ──
     def test_zero_zero_exact(self):
-        assert score(0, 0, 0, 0) == 3
+        assert score(0, 0, 0, 0) == 4
 
     def test_high_scoring_game_exact(self):
-        assert score(5, 4, 5, 4) == 3
+        assert score(5, 4, 5, 4) == 4
 
     def test_high_scoring_game_correct_outcome(self):
         assert score(5, 3, 4, 1) == 2

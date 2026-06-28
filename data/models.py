@@ -189,7 +189,7 @@ class MatchScore(Base):
     match_id: Mapped[int] = mapped_column(
         ForeignKey("matches.id"), nullable=False, index=True
     )
-    points: Mapped[int] = mapped_column(Integer, nullable=False)  # 1, 2, or 3
+    points: Mapped[int] = mapped_column(Integer, nullable=False)  # 0, 2, or 4
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )

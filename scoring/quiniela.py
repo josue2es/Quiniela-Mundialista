@@ -2,13 +2,13 @@
 
 Funciones:
   outcome(home, away) -> 'H' | 'A' | 'D'
-  score(pred_home, pred_away, res_home, res_away) -> 1 | 2 | 3
+  score(pred_home, pred_away, res_home, res_away) -> 0 | 2 | 4
 
 Reglas:
-  - Exacto = 3 puntos
-  - Resultado correcto (mismo outcome, distinto marcador) = 2 puntos
-  - Incorrecto = 1 punto
-  - Sin predicción = 1 punto
+  - Marcador exacto = 4 puntos
+  - Acierta el resultado (ganador o empate), distinto marcador = 2 puntos
+  - No acierta = 0 puntos
+  - Sin predicción = 0 puntos
 
 Regla de penales (ver §5):
   - Se usan goles reglamentarios / de prórroga, SIN contar penales.
@@ -54,21 +54,21 @@ def score(
         res_away: Goles reales del visitante (reglamentarios, sin penales).
 
     Returns:
-        3 = acierto exacto del marcador.
+        4 = acierto exacto del marcador.
         2 = resultado acertado (mismo outcome), pero marcador distinto.
-        1 = resultado incorrecto o sin predicción.
+        0 = resultado incorrecto o sin predicción.
     """
     # Sin predicción
     if pred_home is None or pred_away is None:
-        return 1
+        return 0
 
     # Marcador exacto
     if pred_home == res_home and pred_away == res_away:
-        return 3
+        return 4
 
-    # Mismo outcome
+    # Mismo outcome (acierta ganador o empate)
     if outcome(pred_home, pred_away) == outcome(res_home, res_away):
         return 2
 
-    # Incorrecto
-    return 1
+    # No acierta
+    return 0
