@@ -155,10 +155,22 @@ def _is_finished(match: dict) -> bool:
     return match.get("status") == "finished"
 
 
-def _team_label(flag: str, name: str) -> None:
+def _flag_el(flag: str | None) -> None:
+    """Render a flag: image if it's a logo URL, else emoji/text label.
+
+    Real API matches store a .png URL in home_flag/away_flag; demo/TBD use an
+    emoji. URLs must render as <img>, not raw text.
+    """
+    if flag and isinstance(flag, str) and flag.startswith("http"):
+        ui.image(flag).classes("flag-img")
+    else:
+        ui.label(flag or "🏳️").classes("flag-display")
+
+
+def _team_label(flag: str | None, name: str) -> None:
     """Left side of a team row: flag + country name (truncates on overflow)."""
     with ui.row().classes("items-center gap-2 min-w-0 flex-1 flex-nowrap"):
-        ui.label(flag).classes("flag-display")
+        _flag_el(flag)
         ui.label(name).classes("team-name")
 
 
@@ -214,7 +226,7 @@ def hoy_page() -> None:
                             with ui.row().classes(
                                 "w-full items-center gap-2 mt-2 flex-nowrap"
                             ):
-                                ui.label("🏳️").classes("flag-display")
+                                _flag_el(fl)
                                 ui.label("Por confirmar").classes(
                                     "team-name text-dim"
                                 )
