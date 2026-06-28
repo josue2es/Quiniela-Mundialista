@@ -14,10 +14,12 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from nicegui import app, ui
 
 from data.database import init_db, seed_players, SessionLocal
-from auth import session_guard
+from auth import session_guard, is_admin
 from ui.standings import standings_page
 from ui.manana import manana_page
 from ui.hoy import hoy_page
+from ui.apuestas import apuestas_page
+from ui.admin import admin_page
 import auth.login  # noqa: F401 — registers /login page
 
 # ── Logging ────────────────────────────────────────────────────────────────
@@ -320,12 +322,18 @@ def index():
                     ),
                 ).props("flat dense round").classes("btn-logout")
 
+    # Admin tab only for admins (checked at render time)
+    show_admin = is_admin()
+
     # ── Tabs ──
     with ui.row().classes("w-full max-w-4xl mx-auto mt-4 px-2"):
         with ui.tabs().classes("w-full") as tabs:
             ui.tab("Hoy", icon="sports_soccer")
             ui.tab("Tabla", icon="leaderboard")
             ui.tab("Mañana", icon="event")
+            ui.tab("Apuestas", icon="receipt_long")
+            if show_admin:
+                ui.tab("Admin", icon="admin_panel_settings")
 
     with ui.tab_panels(tabs, value="Hoy").classes(
         "w-full max-w-4xl mx-auto mt-2 px-2 mb-8"
@@ -336,6 +344,11 @@ def index():
             standings_page()
         with ui.tab_panel("Mañana"):
             manana_page()
+        with ui.tab_panel("Apuestas"):
+            apuestas_page()
+        if show_admin:
+            with ui.tab_panel("Admin"):
+                admin_page()
 
 
 # ── Startup hook ───────────────────────────────────────────────────────────

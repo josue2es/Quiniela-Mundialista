@@ -23,3 +23,17 @@ def session_guard() -> bool:
         ui.navigate.to("/login")
         return False
     return True
+
+
+def is_admin() -> bool:
+    """True if the logged-in player has is_admin=True. False if no session."""
+    player_id = app.storage.user.get("player_id")
+    if not player_id:
+        return False
+    # Local imports to avoid a circular import at module load time.
+    from data.database import SessionLocal
+    from data.models import Player
+
+    with SessionLocal() as session:
+        player = session.get(Player, player_id)
+        return bool(player and player.is_admin)

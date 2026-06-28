@@ -27,6 +27,12 @@ de proveedor intercambiable.
   (puntos ganados hoy) y **Δ** (cambio de posición vs. el snapshot del día anterior).
 - **Tab "Mañana"** — partidos del día siguiente. Los equipos por definir (eliminatorias)
   se muestran como **TBD** con los inputs deshabilitados hasta que se resuelvan.
+- **Tab "Apuestas"** — vista pública (solo lectura) para todos: por cada partido
+  cerrado muestra el marcador real y la predicción + puntos de los 11 jugadores,
+  ordenados por puntos. No revela apuestas de partidos aún abiertos.
+- **Tab "Admin"** — solo para jugadores `is_admin`: corrige la predicción de un
+  jugador en un partido cerrado, re-puntúa al instante (borra y recalcula el
+  `match_score`) y registra cada cambio en un log de auditoría.
 - **Puntuación automática** en background cuando un partido pasa a finalizado.
 - **Tema oscuro** integrado.
 
@@ -109,6 +115,8 @@ ui/
   hoy.py                # Tab "Hoy"
   standings.py          # Tab "Tabla"
   manana.py             # Tab "Mañana"
+  apuestas.py           # Tab "Apuestas" (vista pública de partidos cerrados)
+  admin.py              # Tab "Admin" + apply_correction (re-scoring + auditoría)
 scripts/
   init_db.py            # Crear/verificar tablas
   daily_snapshot.py     # Snapshot diario de posiciones (cron 00:00 ES)
@@ -120,14 +128,16 @@ tests/
 
 ### Modelo de datos
 
-- **`players`** — `name` (único), `password` (texto plano, fase dev), `avatar_flag`, `is_setup`, `initial_points` (handicap que se suma al total).
+- **`players`** — `name` (único), `password` (texto plano, fase dev), `avatar_flag`, `is_setup`, `initial_points` (handicap que se suma al total), `is_admin`.
 - **`matches`** — `external_id` (id del proveedor), `home`/`away` (null = TBD), banderas,
   `kickoff_utc`, `match_date_local` (fecha ES), `stage`, `status`, `goals_home`/`goals_away`.
 - **`predictions`** — `pred_home`/`pred_away` (0–100), único por `(player_id, match_id)`.
-- **`match_scores`** — `points` (1/2/3), único por `(player_id, match_id)`. Se escribe
-  al finalizar el partido para **los 11 jugadores** (quien no predijo recibe 1).
+- **`match_scores`** — `points` (0/2/4), único por `(player_id, match_id)`. Se escribe
+  al finalizar el partido para **los 11 jugadores** (quien no predijo recibe 0).
 - **`standings_snapshots`** — `total_points` + `rank` por jugador por día, para el
   cálculo de Δ posición.
+- **`admin_audit_log`** — registro de cada corrección de admin: quién, cuándo, qué
+  partido y jugador, predicción y puntos viejos → nuevos.
 
 ### Scheduler (jobs en background)
 
@@ -175,15 +185,17 @@ Las credenciales se cargan desde un CSV **que no se commitea** (`.gitignore`).
 El seed hace *upsert* por `name`, así que re-correrlo no duplica. Formato:
 
 ```csv
-name,password,initial_points
-Cuestas,1234,0
-Vega,5678,10
-Josue,4321,5
+name,password,initial_points,is_admin
+Cuestas,1234,0,
+Vega,5678,10,
+Josue,4321,5,true
 ```
 
 - `initial_points` es **opcional** (handicap inicial por jugador). Si la columna
   no está, todos arrancan en 0. Se **suma al total** en la Tabla y en el snapshot
   diario, y se actualiza por *upsert* si cambiás el valor en el CSV.
+- `is_admin` es **opcional**; valor truthy (`true`/`1`/`yes`) da acceso al panel
+  Admin. Vacío/ausente = no admin. También se actualiza por *upsert*.
 
 > Las contraseñas se guardan en **texto plano** (4 dígitos) — esto es una fase de
 > desarrollo, **no producción**. Si el proyecto se publica, hay que cambiar a hash.
