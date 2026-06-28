@@ -186,9 +186,9 @@ El seed hace *upsert* por `name`, así que re-correrlo no duplica. Formato:
 
 ```csv
 name,password,initial_points,is_admin
-Cuestas,1234,0,
-Vega,5678,10,
-Josue,4321,5,true
+Jugado1,1211,0,
+Jugador2,1178,10,
+Jugador3,1121,5,true
 ```
 
 - `initial_points` es **opcional** (handicap inicial por jugador). Si la columna
