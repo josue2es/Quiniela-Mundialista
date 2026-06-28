@@ -116,6 +116,13 @@ DARK_CSS = """
   .q-tab {
     color: var(--text-dim) !important;
   }
+  /* Tab panels default to white — force transparent so the dark bg shows */
+  .q-tab-panels, .q-tab-panel, .q-panel {
+    background: transparent !important;
+  }
+  .nicegui-content, .q-page, .q-page-container {
+    background: transparent !important;
+  }
   .q-table {
     background: var(--card) !important;
     border-radius: 12px !important;
@@ -149,22 +156,45 @@ DARK_CSS = """
   .q-field__native, .q-field__label {
     color: var(--text) !important;
   }
+  .text-dim { color: var(--text-dim) !important; }
+  /* Team row: flag + country name, truncates on small screens */
+  .team-name {
+    font-weight: 700;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .score-input {
+    width: 72px !important;
+    flex: 0 0 auto;
+  }
+  .score-input input[type=number] {
+    font-size: 1.2rem !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+    padding: 6px 4px !important;
+  }
+  .score-final {
+    font-size: 1.5rem !important;
+    font-weight: 800 !important;
+    color: var(--accent) !important;
+    flex: 0 0 auto;
+    min-width: 32px;
+    text-align: center;
+  }
   input[type=number] {
-    background: var(--surface) !important;
     color: var(--text) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: 8px !important;
-    padding: 8px 12px !important;
-    font-size: 1.1rem !important;
     font-weight: 700 !important;
     text-align: center !important;
-    width: 80px !important;
   }
-  input[type=number]:focus {
-    border-color: var(--accent) !important;
-    outline: none !important;
-    box-shadow: 0 0 0 3px rgba(0,200,83,0.15) !important;
+  /* Hide number spin buttons for a cleaner mobile look */
+  input[type=number]::-webkit-inner-spin-button,
+  input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none; margin: 0;
   }
+  .standings-table { font-size: 0.95rem; }
+  .standings-table td, .standings-table th { padding: 6px 8px !important; }
   .stage-badge {
     font-size: 0.7rem !important;
     font-weight: 700 !important;
@@ -246,22 +276,24 @@ def index():
     # ── Header ──
     with ui.header(elevated=False).classes("header-bar"):
         with ui.row().classes(
-            "w-full max-w-4xl mx-auto items-center justify-between px-4 py-3"
+            "w-full max-w-4xl mx-auto items-center justify-between px-3 py-2 "
+            "flex-nowrap gap-2"
         ):
-            with ui.row().classes("items-center gap-2"):
-                ui.label("⚽").classes("text-2xl")
-                ui.label("Quiniela").classes("text-xl font-bold page-title")
-            with ui.row().classes("items-center gap-3"):
-                ui.label(avatar).classes("flag-display")
-                ui.label(player_name).classes("text-lg font-semibold text-white")
+            with ui.row().classes("items-center gap-1 min-w-0"):
+                ui.label("⚽").classes("text-xl")
+                ui.label("Quiniela").classes("text-lg font-bold page-title")
+            with ui.row().classes("items-center gap-2 min-w-0 flex-nowrap"):
+                ui.label(avatar).classes("text-xl")
+                ui.label(player_name).classes(
+                    "text-base font-semibold text-white team-name"
+                )
                 ui.button(
-                    "Salir",
                     icon="logout",
                     on_click=lambda: (
                         app.storage.user.clear(),
                         ui.navigate.to("/login"),
                     ),
-                ).props("flat dense").classes("btn-logout")
+                ).props("flat dense round").classes("btn-logout")
 
     # ── Tabs ──
     with ui.row().classes("w-full max-w-4xl mx-auto mt-4 px-2"):
