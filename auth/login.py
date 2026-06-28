@@ -75,6 +75,9 @@ DARK_CSS = """<style>
   body { background: var(--bg) !important; color: var(--text) !important; }
   .q-card { background: var(--card) !important; border: 1px solid var(--border) !important; border-radius: 14px !important; }
   .q-field__native, .q-field__label { color: var(--text) !important; }
+  /* Texto de los dropdowns (select) en azul, incluyendo las opciones del menú */
+  .q-select .q-field__native, .q-select .q-field__native > span { color: #4a9eff !important; }
+  .q-menu .q-item__label, .q-menu .q-item { color: #4a9eff !important; }
   .page-title { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; }
 </style>"""
 
