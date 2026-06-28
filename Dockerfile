@@ -14,6 +14,6 @@ RUN uv pip install --system --break-system-packages \
 
 COPY . .
 
-EXPOSE 8090
+EXPOSE 8091
 
 CMD ["python", "main.py"]

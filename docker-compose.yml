@@ -2,19 +2,21 @@ services:
   quiniela:
     build: .
     ports:
-      - "8090:8090"
+      - "8091:8091"
     env_file:
       - .env
     environment:
       - TZ=America/El_Salvador
-      - PORT=8090
+      - PORT=8091
     volumes:
       - ./data/db:/data
       - ./data/storage:/app/.nicegui
-      - ./players.csv:/config/players.csv:ro
+      # Carpeta de config (read-only). Poné players.csv en ./data/config/ para
+      # uso real; si está vacía, el seed de jugadores se omite sin error.
+      - ./data/config:/config:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8090"]
+      test: ["CMD", "curl", "-f", "http://localhost:8091"]
       interval: 30s
       timeout: 5s
       retries: 3

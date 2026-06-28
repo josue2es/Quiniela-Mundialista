@@ -48,7 +48,7 @@ penales. Un 1-1 que se define por penales cuenta como **empate** para la puntuac
 ## Stack
 
 - **Python 3.12+**, gestionado con [`uv`](https://github.com/astral-sh/uv)
-- **NiceGUI 3.x** — UI y servidor web (puerto 8090)
+- **NiceGUI 3.x** — UI y servidor web (puerto 8091)
 - **SQLAlchemy 2.0 + SQLite** (modo WAL)
 - **APScheduler** — jobs async en proceso
 - **httpx** — cliente async para el proveedor de datos
@@ -189,7 +189,7 @@ Josue,4321
 ```bash
 uv sync                          # instala dependencias
 uv run python scripts/init_db.py # crea las tablas
-uv run python main.py            # levanta la app en http://localhost:8090
+uv run python main.py            # levanta la app en http://localhost:8091
 ```
 
 Al arrancar, `main.py` llama a `init_db()` y `seed_players()` automáticamente, y
@@ -226,20 +226,37 @@ sobre una BD SQLite en memoria (`test_poll_results.py`).
 
 ## Despliegue con Docker
 
+Antes de levantar, creá el `.env` (es obligatorio por `env_file`):
+
 ```bash
+cp .env.example .env          # editá STORAGE_SECRET (y APIFOOTBALL_KEY si usás API real)
 docker compose up -d --build
 ```
 
-`docker-compose.yml` levanta un único servicio en el puerto **8090** con:
+`docker-compose.yml` levanta un único servicio en el puerto **8091** con:
 
-- Volúmenes persistentes para la BD (`/data`) y el storage de NiceGUI.
-- `players.csv` montado **read-only** en `/config/players.csv`.
+- Volúmenes persistentes para la BD (`./data/db` → `/data`) y el storage de NiceGUI.
+- Carpeta de config montada **read-only** (`./data/config` → `/config`). Poné tu
+  `players.csv` en `./data/config/players.csv` para uso real; si está vacía, el
+  seed de jugadores se omite sin error.
 - `TZ=America/El_Salvador` y `restart: unless-stopped`.
-- Healthcheck HTTP contra el puerto 8090.
+- Healthcheck HTTP contra el puerto 8091.
 
-Asegurate de tener `.env` y `players.csv` presentes (ambos están en `.gitignore`
-y nunca se hornean en la imagen). La imagen base es `python:3.12-slim`, compatible
-con ARM64 (Oracle Cloud).
+La imagen base es `python:3.12-slim`, compatible con ARM64 (Oracle Cloud).
+
+### Probar la demo en Docker (sin API key ni players.csv)
+
+Poné `SEED_DEMO=1` en el `.env` y levantá: si la BD está vacía, se cargan los
+datos de demostración (dieciseisavos) automáticamente al arrancar. No borra datos
+existentes, así que en reinicios posteriores se respeta lo que ya haya.
+
+```bash
+echo "SEED_DEMO=1" >> .env
+docker compose up -d --build
+# Abrí http://<host>:8091 e ingresá con, p.ej., Cuestas / 1234
+```
+
+Para volver a empezar de cero: `docker compose down && rm -rf data/db && docker compose up -d`.
 
 El snapshot diario también puede ejecutarse fuera del proceso vía cron usando
 `scripts/cron_daily_snapshot.sh`, aunque por defecto el job ya corre dentro de la
