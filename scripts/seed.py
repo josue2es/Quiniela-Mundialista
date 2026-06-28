@@ -58,17 +58,17 @@ def at_es(day, hour, minute=0):
 # ── Jugadores (los 11 del grupo) ──────────────────────────────────────────────
 
 PLAYERS = [
-    {"name": "Cuestas",  "password": "1234", "avatar_flag": "🇦🇷"},
-    {"name": "Vega",     "password": "2345", "avatar_flag": "🇧🇷"},
-    {"name": "Chepe",    "password": "3456", "avatar_flag": "🇸🇻"},
-    {"name": "Mamer",    "password": "4567", "avatar_flag": "🇲🇽"},
-    {"name": "Josue",    "password": "5678", "avatar_flag": "🇪🇸"},
-    {"name": "Tony",     "password": "6789", "avatar_flag": "🇫🇷"},
-    {"name": "Frank",    "password": "7890", "avatar_flag": "🇩🇪"},
-    {"name": "Colocha",  "password": "8901", "avatar_flag": "🇵🇹"},
-    {"name": "Mumuja",   "password": "9012", "avatar_flag": "🇺🇾"},
-    {"name": "Jaime",    "password": "0123", "avatar_flag": "🇮🇹"},
-    {"name": "Chicapan", "password": "1357", "avatar_flag": "🇨🇴"},
+    {"name": "Cuestas",  "password": "1234", "avatar_flag": "🇦🇷", "initial_points": 0},
+    {"name": "Vega",     "password": "2345", "avatar_flag": "🇧🇷", "initial_points": 5},
+    {"name": "Chepe",    "password": "3456", "avatar_flag": "🇸🇻", "initial_points": 10},
+    {"name": "Mamer",    "password": "4567", "avatar_flag": "🇲🇽", "initial_points": 0},
+    {"name": "Josue",    "password": "5678", "avatar_flag": "🇪🇸", "initial_points": 3},
+    {"name": "Tony",     "password": "6789", "avatar_flag": "🇫🇷", "initial_points": 8},
+    {"name": "Frank",    "password": "7890", "avatar_flag": "🇩🇪", "initial_points": 12},
+    {"name": "Colocha",  "password": "8901", "avatar_flag": "🇵🇹", "initial_points": 0},
+    {"name": "Mumuja",   "password": "9012", "avatar_flag": "🇺🇾", "initial_points": 6},
+    {"name": "Jaime",    "password": "0123", "avatar_flag": "🇮🇹", "initial_points": 0},
+    {"name": "Chicapan", "password": "1357", "avatar_flag": "🇨🇴", "initial_points": 15},
 ]
 
 
@@ -218,6 +218,7 @@ def seed():
                 name=p["name"],
                 password=p["password"],
                 avatar_flag=p["avatar_flag"],
+                initial_points=p.get("initial_points", 0),
                 is_setup=True,  # demo: ya configurados, listos para login
             )
             session.add(player)

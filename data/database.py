@@ -67,13 +67,41 @@ def init_db(drop_all: bool = False):
     if drop_all:
         Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    _migrate_add_columns()
+
+
+def _migrate_add_columns():
+    """Lightweight migrations for SQLite (no Alembic).
+
+    Adds columns introduced after a DB was first created, so existing
+    deployments don't need to drop their data. Idempotent.
+    """
+    with engine.begin() as conn:
+        existing = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(players)").fetchall()
+        }
+        if "initial_points" not in existing:
+            conn.exec_driver_sql(
+                "ALTER TABLE players ADD COLUMN initial_points INTEGER NOT NULL DEFAULT 0"
+            )
+
+
+def _parse_int(value: str, default: int = 0) -> int:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return default
 
 
 def seed_players(csv_path: str | None = None):
     """Upsert players from CSV (idempotent — re-running won't duplicate).
 
-    CSV columns: name,password
-    Only updates password if changed; never touches avatar_flag or is_setup.
+    CSV columns: name,password[,initial_points]
+    - password: updated only if it changed.
+    - initial_points: optional handicap added to the player's total; updated
+      whenever present in the CSV. Defaults to 0 when the column is absent.
+    Never touches avatar_flag or is_setup on existing players.
     New players get defaults: is_setup=False, avatar_flag=🏴.
     """
     path = csv_path or CSV_PATH
@@ -85,15 +113,25 @@ def seed_players(csv_path: str | None = None):
     with SessionLocal() as session:
         with open(path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
+            has_initial = reader.fieldnames is not None and "initial_points" in reader.fieldnames
             for row in reader:
                 name = row.get("name", "").strip()
                 password = row.get("password", "").strip()
                 if not name:
                     continue
+                initial = _parse_int(row.get("initial_points", 0)) if has_initial else None
                 existing = session.query(Player).filter_by(name=name).first()
                 if existing:
                     if password and existing.password != password:
                         existing.password = password
+                    if initial is not None and existing.initial_points != initial:
+                        existing.initial_points = initial
                 else:
-                    session.add(Player(name=name, password=password))
+                    session.add(
+                        Player(
+                            name=name,
+                            password=password,
+                            initial_points=initial or 0,
+                        )
+                    )
         session.commit()

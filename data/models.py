@@ -42,6 +42,8 @@ class Player(Base):
     password: Mapped[str] = mapped_column(String(255), nullable=False)  # plain text
     avatar_flag: Mapped[str] = mapped_column(String(10), nullable=False, default="🏴")
     is_setup: Mapped[bool] = mapped_column(default=False)
+    # Puntos iniciales (handicap) por jugador; se suman al total. Vienen del CSV.
+    initial_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -63,6 +65,7 @@ class Player(Base):
             "name": self.name,
             "avatar_flag": self.avatar_flag,
             "is_setup": self.is_setup,
+            "initial_points": self.initial_points,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

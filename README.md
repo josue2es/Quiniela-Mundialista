@@ -120,7 +120,7 @@ tests/
 
 ### Modelo de datos
 
-- **`players`** — `name` (único), `password` (texto plano, fase dev), `avatar_flag`, `is_setup`.
+- **`players`** — `name` (único), `password` (texto plano, fase dev), `avatar_flag`, `is_setup`, `initial_points` (handicap que se suma al total).
 - **`matches`** — `external_id` (id del proveedor), `home`/`away` (null = TBD), banderas,
   `kickoff_utc`, `match_date_local` (fecha ES), `stage`, `status`, `goals_home`/`goals_away`.
 - **`predictions`** — `pred_home`/`pred_away` (0–100), único por `(player_id, match_id)`.
@@ -175,11 +175,15 @@ Las credenciales se cargan desde un CSV **que no se commitea** (`.gitignore`).
 El seed hace *upsert* por `name`, así que re-correrlo no duplica. Formato:
 
 ```csv
-name,password
-Cuestas,1234
-Vega,5678
-Josue,4321
+name,password,initial_points
+Cuestas,1234,0
+Vega,5678,10
+Josue,4321,5
 ```
+
+- `initial_points` es **opcional** (handicap inicial por jugador). Si la columna
+  no está, todos arrancan en 0. Se **suma al total** en la Tabla y en el snapshot
+  diario, y se actualiza por *upsert* si cambiás el valor en el CSV.
 
 > Las contraseñas se guardan en **texto plano** (4 dígitos) — esto es una fase de
 > desarrollo, **no producción**. Si el proyecto se publica, hay que cambiar a hash.
