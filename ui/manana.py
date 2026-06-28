@@ -104,9 +104,21 @@ def _kickoff_str(match: dict) -> str:
     return datetime.fromisoformat(kt).astimezone(TZ_ES).strftime("%H:%M")
 
 
-def _team_label(flag: str, name: str, dim: bool = False) -> None:
+def _flag_el(flag: str | None) -> None:
+    """Render a flag: image if it's a logo URL, else emoji/text label.
+
+    Real API matches store a .png URL in home_flag/away_flag; demo/TBD use an
+    emoji. URLs must render as <img>, not raw text.
+    """
+    if flag and isinstance(flag, str) and flag.startswith("http"):
+        ui.image(flag).classes("flag-img")
+    else:
+        ui.label(flag or "🏳️").classes("flag-display")
+
+
+def _team_label(flag: str | None, name: str, dim: bool = False) -> None:
     with ui.row().classes("items-center gap-2 min-w-0 flex-1 flex-nowrap"):
-        ui.label(flag).classes("flag-display")
+        _flag_el(flag)
         ui.label(name).classes("team-name" + (" text-dim" if dim else ""))
 
 
@@ -151,11 +163,11 @@ def manana_page() -> None:
                             ui.label(f"🕑 {k_str}").classes("match-time")
 
                     if tbd:
-                        for _ in range(2):
+                        for fl in (home_flag, away_flag):
                             with ui.row().classes(
                                 "w-full items-center gap-2 mt-2 flex-nowrap"
                             ):
-                                ui.label("🏳️").classes("flag-display")
+                                _flag_el(fl)
                                 ui.label("Por confirmar").classes(
                                     "team-name text-dim"
                                 )

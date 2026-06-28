@@ -180,6 +180,16 @@ DARK_CSS = """
     overflow: hidden;
     text-overflow: ellipsis;
   }
+  /* Team crest rendered from a logo URL (real API matches) */
+  .flag-img {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px;
+    flex: 0 0 auto;
+  }
+  .flag-img img, .flag-img .q-img__image {
+    object-fit: contain !important;
+  }
   .score-input {
     width: 72px !important;
     flex: 0 0 auto;
