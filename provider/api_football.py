@@ -41,11 +41,11 @@ STATUS_MAP: dict[str, str] = {
     "FT":  "finished",
     "AET": "finished",
     "PEN": "finished",
-    "PST": "finished",  # postponed
-    "CANC": "finished", # cancelled
-    "ABD":  "finished", # abandoned
-    "AWD":  "finished", # technical loss
-    "WO":   "finished", # walkover
+    "PST":  "scheduled",  # postponed → sigue programado (se jugará más tarde)
+    "CANC": "cancelled",  # cancelled
+    "ABD":  "cancelled",  # abandoned
+    "AWD":  "cancelled",  # technical loss (awarded)
+    "WO":   "cancelled",  # walkover
 }
 
 

@@ -48,6 +48,15 @@ if os.environ.get("SEED_DEMO", "").strip().lower() in ("1", "true", "yes"):
     else:
         logger.info("SEED_DEMO activo pero la BD ya tiene jugadores — se omite")
 
+# Cleanup al arrancar: recupera partidos zombi (FINISHED sin goles) que pudieron
+# quedar si la app estuvo caída mientras un sync los marcó finished sin que el
+# poll los procesara. Se resetean a SCHEDULED para que el próximo poll los puntúe.
+from scheduler.poll_results import reset_zombie_matches as _reset_zombies
+
+_zombies = _reset_zombies(SessionLocal)
+if _zombies:
+    logger.warning("Startup: %d partido(s) zombi reseteados a SCHEDULED", _zombies)
+
 # ── Storage secret (requerido para app.storage.user) ────────────────────────
 STORAGE_SECRET = os.environ.get("STORAGE_SECRET", secrets.token_hex(32))
 

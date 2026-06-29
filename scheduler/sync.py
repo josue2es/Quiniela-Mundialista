@@ -230,9 +230,17 @@ async def sync_fixtures(
                         existing.stage = pm.stage
                         changed = True
 
-                    # Status
+                    # Status — sync NUNCA finaliza un partido.
+                    # La transición a FINISHED es exclusiva de poll_results,
+                    # que es el único que también escribe los goles. Si sync
+                    # marcara FINISHED, el match quedaría zombi (finished sin
+                    # goles) y poll lo saltearía (filtra SCHEDULED/LIVE).
                     new_status = _map_status(pm.status)
-                    if existing.status != new_status:
+                    if new_status == MatchStatus.FINISHED:
+                        pass  # lo finaliza poll_results en su próximo ciclo
+                    elif (existing.status != MatchStatus.FINISHED
+                          and existing.status != new_status):
+                        # Tampoco "des-finalizamos" un partido ya cerrado por poll.
                         existing.status = new_status
                         changed = True
 
@@ -257,6 +265,12 @@ async def sync_fixtures(
                     if changed:
                         updated += 1
                 else:
+                    # Si un fixture nuevo ya viene FINISHED, lo insertamos como
+                    # SCHEDULED para que poll_results lo procese y escriba goles
+                    # (evita insertar un zombi finished-sin-goles).
+                    insert_status = _map_status(pm.status)
+                    if insert_status == MatchStatus.FINISHED:
+                        insert_status = MatchStatus.SCHEDULED
                     session.add(
                         Match(
                             external_id=pm.external_id,
@@ -267,7 +281,7 @@ async def sync_fixtures(
                             kickoff_utc=pm.kickoff_utc,
                             match_date_local=match_date_local,
                             stage=pm.stage,
-                            status=_map_status(pm.status),
+                            status=insert_status,
                         )
                     )
                     inserted += 1

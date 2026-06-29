@@ -115,3 +115,72 @@ async def test_one_bad_fixture_does_not_abort_others(db_session):
     # El bueno entró aunque el malo (si fue relevante) se haya salteado.
     with db_session() as s:
         assert s.query(Match).filter_by(external_id="800").count() == 1
+
+
+def _provider_match(ext_id, status, day=date(2026, 6, 28)):
+    return ProviderMatch(
+        external_id=ext_id, home_team="A", away_team="B",
+        home_flag=None, away_flag=None,
+        kickoff_utc=datetime(day.year, day.month, day.day, 16, 0, tzinfo=timezone.utc),
+        stage="Round of 32", status=status,
+    )
+
+
+async def test_sync_does_not_finish_existing_match(db_session):
+    """sync NUNCA debe marcar FINISHED (eso es de poll_results, con goles)."""
+    today = date(2026, 6, 28)
+    with db_session() as s:
+        s.add(Match(external_id="900", home="A", away="B",
+                    status=MatchStatus.SCHEDULED,
+                    kickoff_utc=datetime(2026, 6, 28, 16, 0),
+                    match_date_local=today))
+        s.commit()
+
+    provider = FakeProvider(fixtures=[_provider_match("900", "finished")])
+    await sync_fixtures(provider, db_session, today=today, force=True)
+
+    with db_session() as s:
+        m = s.query(Match).filter_by(external_id="900").one()
+        assert m.status == MatchStatus.SCHEDULED  # NO finished
+        assert m.goals_home is None
+
+
+async def test_sync_inserts_finished_fixture_as_scheduled(db_session):
+    """Un fixture nuevo que ya viene finished se inserta SCHEDULED, no zombi."""
+    today = date(2026, 6, 28)
+    provider = FakeProvider(fixtures=[_provider_match("901", "finished")])
+    await sync_fixtures(provider, db_session, today=today, force=True)
+
+    with db_session() as s:
+        m = s.query(Match).filter_by(external_id="901").one()
+        assert m.status == MatchStatus.SCHEDULED
+        assert m.goals_home is None
+
+
+async def test_sync_does_not_unfinish_a_closed_match(db_session):
+    """Un partido ya FINISHED (con goles) no se degrada desde sync."""
+    today = date(2026, 6, 28)
+    with db_session() as s:
+        s.add(Match(external_id="902", home="A", away="B",
+                    status=MatchStatus.FINISHED, goals_home=2, goals_away=1,
+                    kickoff_utc=datetime(2026, 6, 28, 16, 0),
+                    match_date_local=today))
+        s.commit()
+
+    provider = FakeProvider(fixtures=[_provider_match("902", "scheduled")])
+    await sync_fixtures(provider, db_session, today=today, force=True)
+
+    with db_session() as s:
+        m = s.query(Match).filter_by(external_id="902").one()
+        assert m.status == MatchStatus.FINISHED
+        assert (m.goals_home, m.goals_away) == (2, 1)
+
+
+def test_provider_status_map_cancelled_and_postponed():
+    from provider.api_football import STATUS_MAP
+    assert STATUS_MAP["FT"] == "finished"
+    assert STATUS_MAP["PST"] == "scheduled"   # postponed sigue programado
+    assert STATUS_MAP["CANC"] == "cancelled"
+    assert STATUS_MAP["ABD"] == "cancelled"
+    assert STATUS_MAP["AWD"] == "cancelled"
+    assert STATUS_MAP["WO"] == "cancelled"
