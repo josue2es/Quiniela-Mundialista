@@ -34,6 +34,38 @@ def _is_finished_status(status: str) -> bool:
     return status in ("finished", "FT", "AET", "PEN")
 
 
+def reset_zombie_matches(session_factory: Callable[[], Session]) -> int:
+    """Recupera partidos zombi: FINISHED pero sin goles registrados.
+
+    Un partido así quedó mal finalizado (p.ej. sync lo marcó FINISHED sin
+    escribir goles mientras la app dormía). poll_results filtra SCHEDULED/LIVE,
+    así que nunca lo puntuaría. Lo reseteamos a SCHEDULED para que el próximo
+    poll lo procese, escriba los goles y puntúe.
+
+    Devuelve cuántos partidos se resetearon. Pensado para correr al arrancar.
+    """
+    session = session_factory()
+    try:
+        zombies = (
+            session.query(Match)
+            .filter(
+                Match.status == MatchStatus.FINISHED,
+                (Match.goals_home.is_(None)) | (Match.goals_away.is_(None)),
+            )
+            .all()
+        )
+        for m in zombies:
+            logger.warning(
+                "reset_zombie: %s (%s vs %s) estaba FINISHED sin goles → SCHEDULED",
+                m.external_id, m.home, m.away,
+            )
+            m.status = MatchStatus.SCHEDULED
+        session.commit()
+        return len(zombies)
+    finally:
+        session.close()
+
+
 # ── Scoring ───────────────────────────────────────────────────────────────────
 
 

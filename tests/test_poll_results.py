@@ -17,7 +17,12 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from data.models import Base, Match, MatchScore, MatchStatus, Player, Prediction
-from scheduler.poll_results import poll_results, _score_match, _is_finished_status
+from scheduler.poll_results import (
+    poll_results,
+    _score_match,
+    _is_finished_status,
+    reset_zombie_matches,
+)
 
 
 # ── Fake Provider ────────────────────────────────────────────────────────────
@@ -115,6 +120,36 @@ def finished_match(db_session):
 
 
 # ── _is_finished_status ──────────────────────────────────────────────────────
+
+class TestResetZombies:
+    def test_resets_finished_without_goals(self, db_session):
+        with db_session() as s:
+            # Zombi: FINISHED sin goles
+            s.add(Match(external_id="z1", home="Brazil", away="Japan",
+                        status=MatchStatus.FINISHED, goals_home=None, goals_away=None))
+            # Sano: FINISHED con goles
+            s.add(Match(external_id="ok", home="A", away="B",
+                        status=MatchStatus.FINISHED, goals_home=2, goals_away=1))
+            # Programado normal
+            s.add(Match(external_id="sch", home="C", away="D",
+                        status=MatchStatus.SCHEDULED))
+            s.commit()
+
+        n = reset_zombie_matches(db_session)
+        assert n == 1
+
+        with db_session() as s:
+            assert s.query(Match).filter_by(external_id="z1").one().status == MatchStatus.SCHEDULED
+            assert s.query(Match).filter_by(external_id="ok").one().status == MatchStatus.FINISHED
+            assert s.query(Match).filter_by(external_id="sch").one().status == MatchStatus.SCHEDULED
+
+    def test_no_zombies_returns_zero(self, db_session):
+        with db_session() as s:
+            s.add(Match(external_id="ok", home="A", away="B",
+                        status=MatchStatus.FINISHED, goals_home=0, goals_away=0))
+            s.commit()
+        assert reset_zombie_matches(db_session) == 0
+
 
 class TestIsFinishedStatus:
     def test_finished(self):
