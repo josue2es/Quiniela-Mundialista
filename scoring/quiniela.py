@@ -11,12 +11,12 @@ Reglas:
   - Sin predicción = 0 puntos
 
 Regla de penales (ver §5):
-  - El marcador (4 = exacto, 2 = mismo outcome) se calcula sobre los goles
-    reglamentarios / de prórroga, SIN contar penales. Un 1-1 decidido por
-    penales sigue siendo empate (D) a efectos del marcador.
-  - ADEMÁS: si el partido se definió por penales (empate reglamentario con un
-    ganador en la tanda), quien predijo a ESE ganador recibe 2 puntos. Es
-    aditivo: no le quita puntos a quien acertó el empate o el marcador exacto.
+  - Si el partido se definió por penales (empate reglamentario con un ganador
+    en la tanda), la tanda DEFINE el resultado: es como una victoria pura del
+    que ganó los penales. Sólo quien predijo a ESE ganador puntúa (2 puntos);
+    quien predijo empate recibe 0, incluso si acertó el marcador reglamentario
+    exacto.
+  - Sin penales, el marcador normal: 4 = marcador exacto, 2 = mismo outcome.
 """
 
 from typing import Optional
@@ -62,27 +62,20 @@ def score(
         pen_away: Goles del visitante en la tanda de penales (None si no hubo).
 
     Returns:
-        4 = acierto exacto del marcador reglamentario.
-        2 = resultado acertado (mismo outcome reglamentario), o —si el partido
-            se definió por penales— acierto del ganador de la tanda.
-        0 = resultado incorrecto o sin predicción.
+        En partidos definidos por penales: 2 si predijo al ganador de la tanda,
+        0 en caso contrario (predecir empate ya no puntúa).
+        En el resto: 4 = marcador exacto, 2 = mismo outcome, 0 = no acierta.
+        Sin predicción siempre 0.
     """
     # Sin predicción
     if pred_home is None or pred_away is None:
         return 0
 
-    # Marcador exacto (sobre el reglamentario)
-    if pred_home == res_home and pred_away == res_away:
-        return 4
-
     pred_outcome = outcome(pred_home, pred_away)
 
-    # Mismo outcome reglamentario (acierta ganador o empate)
-    if pred_outcome == outcome(res_home, res_away):
-        return 2
-
-    # Penales: empate reglamentario con ganador en la tanda. Quien predijo a
-    # ese ganador acierta el resultado del cruce → 2 puntos.
+    # Penales: empate reglamentario con ganador en la tanda. La tanda define el
+    # resultado (victoria pura del ganador): sólo quien predijo a ese ganador
+    # puntúa (2). Predecir empate —aun el marcador exacto— recibe 0.
     if (
         outcome(res_home, res_away) == "D"
         and pen_home is not None
@@ -90,8 +83,15 @@ def score(
         and pen_home != pen_away
     ):
         pen_outcome = "H" if pen_home > pen_away else "A"
-        if pred_outcome == pen_outcome:
-            return 2
+        return 2 if pred_outcome == pen_outcome else 0
+
+    # Marcador exacto (sobre el reglamentario)
+    if pred_home == res_home and pred_away == res_away:
+        return 4
+
+    # Mismo outcome reglamentario (acierta ganador o empate)
+    if pred_outcome == outcome(res_home, res_away):
+        return 2
 
     # No acierta
     return 0

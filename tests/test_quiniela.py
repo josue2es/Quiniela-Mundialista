@@ -95,7 +95,11 @@ class TestScore:
 
 
 class TestPenaltyWinner:
-    """Penales: quien predijo al ganador de la tanda recibe 2 puntos."""
+    """Penales (regla estricta): la tanda define el resultado.
+
+    Sólo quien predijo al ganador de la tanda puntúa (2). Predecir empate —aun
+    el marcador reglamentario exacto— recibe 0.
+    """
 
     def test_predicted_home_win_home_wins_pens(self):
         # Predijo 2-1 (local). Reglamentario 1-1, local gana 4-3 en penales → 2.
@@ -113,14 +117,13 @@ class TestPenaltyWinner:
         # Predijo visitante, pero el local ganó la tanda → 0.
         assert score(1, 2, 1, 1, pen_home=5, pen_away=4) == 0
 
-    def test_draw_prediction_still_scores_with_pens(self):
-        # Aditivo: acertar el empate reglamentario sigue dando 2 aunque haya
-        # penales (no se le quitan puntos a quien predijo empate).
-        assert score(0, 0, 1, 1, pen_home=4, pen_away=3) == 2
+    def test_draw_prediction_scores_zero_with_pens(self):
+        # Estricto: predecir empate ya no puntúa si hubo definición por penales.
+        assert score(0, 0, 1, 1, pen_home=4, pen_away=3) == 0
 
-    def test_exact_regulation_still_four_with_pens(self):
-        # Marcador reglamentario exacto sigue siendo 4 aunque se definiera en pens.
-        assert score(1, 1, 1, 1, pen_home=4, pen_away=3) == 4
+    def test_exact_regulation_draw_scores_zero_with_pens(self):
+        # Estricto: ni siquiera el marcador reglamentario exacto puntúa.
+        assert score(1, 1, 1, 1, pen_home=4, pen_away=3) == 0
 
     def test_regulation_win_unaffected_by_pen_args(self):
         # Si NO hubo empate reglamentario, los penales son irrelevantes.

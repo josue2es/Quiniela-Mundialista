@@ -328,7 +328,8 @@ class TestPollResults:
                 player_id=all_players[1].id, match_id=match,
                 pred_home=0, pred_away=1,
             ))
-            # Jugador 2 predijo empate 1-1 (marcador reglamentario exacto) → 4.
+            # Jugador 2 predijo empate 1-1 (marcador reglamentario exacto). Con
+            # la regla estricta de penales, el empate ya no puntúa → 0.
             session.add(Prediction(
                 player_id=all_players[2].id, match_id=match,
                 pred_home=1, pred_away=1,
@@ -353,7 +354,7 @@ class TestPollResults:
             }
         assert scores[all_players[0].id] == 2  # acertó al ganador de penales
         assert scores[all_players[1].id] == 0  # ganador equivocado
-        assert scores[all_players[2].id] == 4  # marcador reglamentario exacto
+        assert scores[all_players[2].id] == 0  # predijo empate: ya no puntúa
 
     async def test_idempotent_full_flow(self, db_session, players, match):
         """Ejecutar poll_results dos veces no duplica."""
