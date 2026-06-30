@@ -46,6 +46,11 @@ class Player(Base):
     initial_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # Admin: puede corregir predicciones de partidos cerrados. Viene del CSV.
     is_admin: Mapped[bool] = mapped_column(default=False)
+    # Bloqueo por intentos fallidos de login. failed_attempts cuenta fallos
+    # consecutivos; locked_until (UTC naive) marca hasta cuándo está bloqueada
+    # la cuenta. El admin puede desbloquear desde su panel.
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -69,6 +74,8 @@ class Player(Base):
             "is_setup": self.is_setup,
             "initial_points": self.initial_points,
             "is_admin": self.is_admin,
+            "failed_attempts": self.failed_attempts,
+            "locked_until": self.locked_until.isoformat() if self.locked_until else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

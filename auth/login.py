@@ -9,6 +9,13 @@ from nicegui import app, ui
 
 from data.database import SessionLocal
 from data.models import Player
+from auth.lockout import (
+    is_locked,
+    lock_remaining_minutes,
+    register_failure,
+    register_success,
+    remaining_attempts,
+)
 
 # ── Banderas disponibles (emoji bandera + nombre país) ──────────────────────
 FLAGS: list[tuple[str, str]] = [
@@ -115,12 +122,35 @@ def login_page():
 
         login_error = ui.label("").classes("text-red-500 text-sm mt-0 hidden")
 
+        def _show_error(msg: str) -> None:
+            login_error.set_text(msg)
+            login_error.classes(remove="hidden")
+
         def do_login():
             name = player_select.value
             pw_val = pw_input.value or ""
             with SessionLocal() as session:
                 player = session.query(Player).filter_by(name=name).first()
-                if player and player.password == pw_val:
+
+                # Cuenta inexistente → error genérico (no revela qué falló).
+                if player is None:
+                    _show_error("❌ Nombre o contraseña incorrectos.")
+                    return
+
+                # Cuenta bloqueada por demasiados intentos fallidos.
+                if is_locked(player):
+                    mins = lock_remaining_minutes(player)
+                    _show_error(
+                        f"🔒 Cuenta bloqueada por intentos fallidos. "
+                        f"Probá de nuevo en ~{mins} min o pedile al admin que "
+                        f"te desbloquee."
+                    )
+                    return
+
+                if player.password == pw_val:
+                    # Login correcto → limpiar contador de bloqueo.
+                    register_success(player)
+                    session.commit()
                     state["player"] = player
                     if player.is_setup:
                         # Ya configurado → sesión y redirect
@@ -135,8 +165,20 @@ def login_page():
                         with login_card:
                             _render_flag_selector(player)
                 else:
-                    login_error.set_text("❌ Nombre o contraseña incorrectos.")
-                    login_error.classes(remove="hidden")
+                    # Contraseña incorrecta → sumar fallo y quizá bloquear.
+                    just_locked = register_failure(session, player)
+                    session.commit()
+                    if just_locked:
+                        _show_error(
+                            "🔒 Demasiados intentos fallidos. Cuenta bloqueada "
+                            "por 1 hora. Pedile al admin que te desbloquee."
+                        )
+                    else:
+                        left = remaining_attempts(player)
+                        _show_error(
+                            f"❌ Nombre o contraseña incorrectos. "
+                            f"Te quedan {left} intento(s)."
+                        )
 
         with ui.row().classes("w-full justify-center mt-2"):
             ui.button("Ingresar", icon="login", on_click=do_login).props("unelevated").classes("w-32")

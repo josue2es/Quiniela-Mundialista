@@ -22,6 +22,7 @@ from nicegui import app, ui
 from sqlalchemy import and_
 
 from auth import is_admin
+from auth.lockout import locked_players, unlock_player
 from data.database import SessionLocal
 from data.models import (
     AdminAuditLog,
@@ -269,6 +270,59 @@ def admin_page() -> None:
         "Corregí la predicción de un jugador en un partido cerrado. "
         "Al guardar se recalcula el puntaje y la tabla se reordena sola."
     ).classes("text-xs text-dim w-full mb-3 px-1")
+
+    # ── Cuentas bloqueadas (desbloqueo por el admin) ──
+    locks = ui.column().classes("w-full mb-4")
+
+    def render_locks() -> None:
+        locks.clear()
+        with locks:
+            ui.label("Cuentas bloqueadas").classes(
+                "text-base font-bold w-full mb-1 px-1"
+            )
+            rows = locked_players()
+            if not rows:
+                ui.label("No hay cuentas bloqueadas.").classes(
+                    "text-xs text-dim px-1"
+                )
+                return
+            for r in rows:
+                until = r["locked_until"]
+                if until is not None and until.tzinfo is None:
+                    until = until.replace(tzinfo=timezone.utc)
+                until_txt = until.astimezone(TZ_ES).strftime("%H:%M") if until else "?"
+                with ui.card().classes("w-full mb-2 p-3"):
+                    with ui.row().classes(
+                        "w-full items-center justify-between flex-nowrap"
+                    ):
+                        with ui.row().classes(
+                            "items-center gap-2 min-w-0 flex-1 flex-nowrap"
+                        ):
+                            ui.label(r["avatar_flag"]).classes("flag-display")
+                            ui.label(r["name"]).classes("team-name")
+                            ui.label(f"🔒 hasta {until_txt}").classes(
+                                "text-xs text-dim"
+                            )
+
+                        def make_unlock(pid=r["id"], name=r["name"]):
+                            def do_unlock():
+                                if unlock_player(pid):
+                                    ui.notify(
+                                        f"🔓 {name} desbloqueado", type="positive"
+                                    )
+                                    render_locks()
+                                else:
+                                    ui.notify(
+                                        "❌ No se pudo desbloquear", type="negative"
+                                    )
+
+                            return do_unlock
+
+                        ui.button(
+                            "Desbloquear", icon="lock_open", on_click=make_unlock()
+                        ).props("unelevated dense").classes("btn-save")
+
+    render_locks()
 
     finished = _finished_matches()
 
