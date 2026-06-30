@@ -366,13 +366,16 @@ def index():
 async def on_startup():
     """Start the APScheduler background jobs."""
     if not scheduler.running:
-        # sync_fixtures every 6 hours
+        # sync_fixtures every 6 hours.
+        # NOTE: no pasar next_run_time=None — en APScheduler eso PAUSA el job
+        # (lo deja con next_run_time=None y nunca corre). Sin el parámetro,
+        # el primer disparo es a +interval; el primer run inmediato lo hacen
+        # los jobs `date` de abajo.
         scheduler.add_job(
             _sync_fixtures_job,
             "interval",
             hours=6,
             id="sync_fixtures",
-            next_run_time=None,
         )
         # poll_results every 10 minutes (§7)
         scheduler.add_job(
@@ -380,7 +383,6 @@ async def on_startup():
             "interval",
             minutes=10,
             id="poll_results",
-            next_run_time=None,
         )
         # daily_snapshot at midnight ES (06:00 UTC) (§7 D4)
         from zoneinfo import ZoneInfo as _ZI
