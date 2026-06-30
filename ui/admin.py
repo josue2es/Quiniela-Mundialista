@@ -22,7 +22,8 @@ from nicegui import app, ui
 from sqlalchemy import and_
 
 from auth import is_admin
-from auth.lockout import locked_players, unlock_player
+from auth.lockout import locked_ips, unlock_ip
+from data.avatars import save_avatar
 from data.database import SessionLocal
 from data.models import (
     AdminAuditLog,
@@ -33,6 +34,7 @@ from data.models import (
     Prediction,
 )
 from scoring.quiniela import score as compute_score
+from ui import player_avatar
 
 TZ_ES = ZoneInfo("America/El_Salvador")
 
@@ -203,6 +205,7 @@ def _player_rows(match_id: int) -> list[dict]:
                     "player_id": p.id,
                     "name": p.name,
                     "avatar_flag": p.avatar_flag,
+                    "avatar_url": p.avatar_url,
                     "pred_home": pred[0] if pred else 0,
                     "pred_away": pred[1] if pred else 0,
                     "has_pred": pred is not None,
@@ -210,6 +213,20 @@ def _player_rows(match_id: int) -> list[dict]:
                 }
             )
         return rows
+
+
+def _all_players() -> list[dict]:
+    """Lista de jugadores (id, nombre, bandera, avatar) para el gestor de avatares."""
+    with SessionLocal() as session:
+        return [
+            {
+                "id": p.id,
+                "name": p.name,
+                "avatar_flag": p.avatar_flag,
+                "avatar_url": p.avatar_url,
+            }
+            for p in session.query(Player).order_by(Player.name).all()
+        ]
 
 
 def _audit_rows(limit: int = 25) -> list[dict]:
@@ -271,18 +288,18 @@ def admin_page() -> None:
         "Al guardar se recalcula el puntaje y la tabla se reordena sola."
     ).classes("text-xs text-dim w-full mb-3 px-1")
 
-    # ── Cuentas bloqueadas (desbloqueo por el admin) ──
+    # ── IPs bloqueadas (desbloqueo por el admin) ──
     locks = ui.column().classes("w-full mb-4")
 
     def render_locks() -> None:
         locks.clear()
         with locks:
-            ui.label("Cuentas bloqueadas").classes(
+            ui.label("IPs bloqueadas").classes(
                 "text-base font-bold w-full mb-1 px-1"
             )
-            rows = locked_players()
+            rows = locked_ips()
             if not rows:
-                ui.label("No hay cuentas bloqueadas.").classes(
+                ui.label("No hay IPs bloqueadas.").classes(
                     "text-xs text-dim px-1"
                 )
                 return
@@ -298,17 +315,17 @@ def admin_page() -> None:
                         with ui.row().classes(
                             "items-center gap-2 min-w-0 flex-1 flex-nowrap"
                         ):
-                            ui.label(r["avatar_flag"]).classes("flag-display")
-                            ui.label(r["name"]).classes("team-name")
-                            ui.label(f"🔒 hasta {until_txt}").classes(
+                            ui.label("🔒").classes("flag-display")
+                            ui.label(r["ip"]).classes("team-name")
+                            ui.label(f"hasta {until_txt}").classes(
                                 "text-xs text-dim"
                             )
 
-                        def make_unlock(pid=r["id"], name=r["name"]):
+                        def make_unlock(ip=r["ip"]):
                             def do_unlock():
-                                if unlock_player(pid):
+                                if unlock_ip(ip):
                                     ui.notify(
-                                        f"🔓 {name} desbloqueado", type="positive"
+                                        f"🔓 IP {ip} desbloqueada", type="positive"
                                     )
                                     render_locks()
                                 else:
@@ -323,6 +340,64 @@ def admin_page() -> None:
                         ).props("unelevated dense").classes("btn-save")
 
     render_locks()
+
+    # ── Avatares de jugadores (sube un sticker .webp por jugador) ──
+    avatars = ui.column().classes("w-full mb-4")
+
+    def render_avatars() -> None:
+        avatars.clear()
+        with avatars:
+            ui.label("Avatares de jugadores").classes(
+                "text-base font-bold w-full mb-1 px-1"
+            )
+            ui.label(
+                "Subí un sticker .webp por jugador. Aparece antes del nombre "
+                "en toda la app."
+            ).classes("text-xs text-dim w-full mb-2 px-1")
+
+            for pl in _all_players():
+                with ui.card().classes("w-full mb-2 p-3"):
+                    with ui.row().classes(
+                        "w-full items-center gap-2 flex-nowrap"
+                    ):
+                        player_avatar(pl["avatar_url"], size=36)
+                        ui.label(pl["name"]).classes("team-name flex-1")
+                        ui.label(pl["avatar_flag"]).classes("flag-display")
+
+                        def make_upload(pid=pl["id"], name=pl["name"]):
+                            def handle(e) -> None:
+                                try:
+                                    data = e.content.read()
+                                    url = save_avatar(pid, data)
+                                    with SessionLocal() as s:
+                                        p = s.get(Player, pid)
+                                        if p is not None:
+                                            p.avatar_url = url
+                                            s.commit()
+                                    ui.notify(
+                                        f"✅ Avatar de {name} actualizado",
+                                        type="positive",
+                                    )
+                                    render_avatars()
+                                except ValueError as ex:
+                                    ui.notify(f"❌ {ex}", type="negative")
+                                except Exception:
+                                    ui.notify(
+                                        "❌ No se pudo subir el avatar",
+                                        type="negative",
+                                    )
+
+                            return handle
+
+                        ui.upload(
+                            on_upload=make_upload(),
+                            auto_upload=True,
+                            max_files=1,
+                        ).props(
+                            'accept=".webp,image/webp" flat dense'
+                        ).classes("max-w-[180px]")
+
+    render_avatars()
 
     finished = _finished_matches()
 
@@ -395,8 +470,9 @@ def admin_page() -> None:
                         with ui.row().classes(
                             "items-center gap-2 min-w-0 flex-1 flex-nowrap"
                         ):
-                            ui.label(r["avatar_flag"]).classes("flag-display")
+                            player_avatar(r["avatar_url"], size=26)
                             ui.label(r["name"]).classes("team-name")
+                            ui.label(r["avatar_flag"]).classes("flag-display")
                         pts = r["points"] if r["points"] is not None else "—"
                         ui.label(f"🏆 {pts}").classes("points-badge")
                     # Línea 2: editar predicción + guardar

@@ -7,6 +7,32 @@ Si no hay sesión, redirige a /login. Sin encriptación en esta fase (§8).
 from nicegui import app, ui
 
 
+def client_ip() -> str:
+    """IP del cliente actual, honrando X-Forwarded-For (proxy/Docker).
+
+    NiceGUI guarda el request inicial en context.client. Detrás de un reverse
+    proxy, request.client.host es la IP del proxy, así que preferimos el primer
+    valor de X-Forwarded-For cuando viene presente. Devuelve 'unknown' si no se
+    puede determinar (p.ej. fuera de un contexto de página).
+    """
+    from nicegui import context
+
+    try:
+        client = context.client
+        request = getattr(client, "request", None)
+        if request is not None:
+            xff = request.headers.get("x-forwarded-for")
+            if xff:
+                return xff.split(",")[0].strip()
+            real = request.headers.get("x-real-ip")
+            if real:
+                return real.strip()
+        ip = getattr(client, "ip", None)
+        return ip or "unknown"
+    except Exception:
+        return "unknown"
+
+
 def session_guard() -> bool:
     """Verify player_id in app.storage.user. Redirect to /login if missing.
 

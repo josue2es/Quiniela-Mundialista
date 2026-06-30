@@ -35,6 +35,7 @@ def _compute_standings():
             p.id: {
                 "name": p.name,
                 "avatar_flag": p.avatar_flag,
+                "avatar_url": p.avatar_url,
                 "initial": p.initial_points or 0,
             }
             for p in session.query(Player).all()
@@ -104,6 +105,7 @@ def _compute_standings():
                 "player_id": player_id,
                 "player_name": info["name"],
                 "avatar_flag": info["avatar_flag"],
+                "avatar_url": info["avatar_url"],
                 "total_points": total_points,
                 "rank": rank,
                 "hoy_points": hoy_rows.get(player_id, 0) or 0,
@@ -150,8 +152,10 @@ def standings_page() -> None:
                 return
 
             # ── Table (mobile-first: dense, short headers) ──
+            # Columna avatar (.webp) antes del nombre; la bandera va a la derecha.
             columns = [
                 {"name": "pos", "label": "#", "field": "pos", "align": "center"},
+                {"name": "avatar", "label": "", "field": "avatar", "align": "center"},
                 {"name": "name", "label": "Jugador", "field": "name", "align": "left"},
                 {"name": "total", "label": "Pts", "field": "total", "align": "center"},
                 {"name": "hoy", "label": "+Hoy", "field": "hoy", "align": "center"},
@@ -163,8 +167,9 @@ def standings_page() -> None:
                 rows_data.append(
                     {
                         "pos": s["rank"],
-                        # Bandera + nombre juntos en una sola columna (ahorra ancho)
-                        "name": f"{s['avatar_flag']}  {s['player_name']}",
+                        "avatar": s["avatar_url"] or "",
+                        # Nombre con la bandera a la derecha.
+                        "name": f"{s['player_name']}  {s['avatar_flag']}",
                         "total": s["total_points"],
                         "hoy": (
                             f"+{s['hoy_points']}"
@@ -175,11 +180,22 @@ def standings_page() -> None:
                     }
                 )
 
-            ui.table(
+            table = ui.table(
                 columns=columns,
                 rows=rows_data,
                 row_key="name",
             ).props("dense flat").classes("w-full standings-table")
+            table.add_slot(
+                "body-cell-avatar",
+                r"""
+                <q-td :props="props" class="text-center">
+                  <q-avatar v-if="props.value" size="26px" rounded>
+                    <img :src="props.value">
+                  </q-avatar>
+                  <span v-else style="opacity:.35">👤</span>
+                </q-td>
+                """,
+            )
 
     refresh_standings()
 

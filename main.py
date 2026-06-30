@@ -14,7 +14,10 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from nicegui import app, ui
 
 from data.database import init_db, seed_players, SessionLocal
+from data.models import Player
+from data.avatars import ensure_dir as _ensure_avatars_dir, AVATARS_DIR, AVATARS_URL_PREFIX
 from auth import session_guard, is_admin
+from ui import player_avatar
 from ui.standings import standings_page
 from ui.manana import manana_page
 from ui.hoy import hoy_page
@@ -56,6 +59,10 @@ from scheduler.poll_results import reset_zombie_matches as _reset_zombies
 _zombies = _reset_zombies(SessionLocal)
 if _zombies:
     logger.warning("Startup: %d partido(s) zombi reseteados a SCHEDULED", _zombies)
+
+# ── Avatares (.webp) servidos desde el volumen de datos ─────────────────────
+_ensure_avatars_dir()
+app.add_static_files(AVATARS_URL_PREFIX, AVATARS_DIR, max_cache_age=60)
 
 # ── Storage secret (requerido para app.storage.user) ────────────────────────
 STORAGE_SECRET = os.environ.get("STORAGE_SECRET", secrets.token_hex(32))
@@ -307,7 +314,17 @@ def index():
     ui.add_head_html(DARK_CSS)
 
     player_name = app.storage.user.get("player_name", "???")
-    avatar = app.storage.user.get("avatar_flag", "🏳️")
+    flag = app.storage.user.get("avatar_flag", "🏳️")
+
+    # avatar_url se lee fresco de la BD para reflejar cambios del admin sin
+    # necesidad de re-login.
+    avatar_url = None
+    pid = app.storage.user.get("player_id")
+    if pid:
+        with SessionLocal() as _s:
+            _p = _s.get(Player, pid)
+            if _p:
+                avatar_url = _p.avatar_url
 
     # ── Header ──
     with ui.header(elevated=False).classes("header-bar"):
@@ -319,10 +336,12 @@ def index():
                 ui.label("⚽").classes("text-xl")
                 ui.label("Quiniela").classes("text-lg font-bold page-title")
             with ui.row().classes("items-center gap-2 min-w-0 flex-nowrap"):
-                ui.label(avatar).classes("text-xl")
+                # Avatar (.webp) antes del nombre; la bandera pasa a la derecha.
+                player_avatar(avatar_url, size=28)
                 ui.label(player_name).classes(
                     "text-base font-semibold text-white team-name"
                 )
+                ui.label(flag).classes("text-xl")
                 ui.button(
                     icon="logout",
                     on_click=lambda: (

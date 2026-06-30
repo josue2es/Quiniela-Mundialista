@@ -172,6 +172,7 @@ Variables principales (`.env`):
 ```ini
 STORAGE_SECRET=<string-aleatorio-fuerte>   # requerido por app.storage.user de NiceGUI
 DB_PATH=/data/quiniela.db                  # ruta del archivo SQLite
+AVATARS_DIR=/data/avatars                  # carpeta de avatares .webp (def: junto a la BD)
 PLAYERS_CSV=/config/players.csv            # CSV de jugadores (no se commitea)
 MATCH_PROVIDER=api_football                # api_football | balldontlie
 APIFOOTBALL_KEY=<tu-api-key>               # API key del proveedor primario

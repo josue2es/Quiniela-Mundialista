@@ -9,6 +9,7 @@ from nicegui import app, ui
 
 from data.database import SessionLocal
 from data.models import Player
+from auth import client_ip
 from auth.lockout import (
     is_locked,
     lock_remaining_minutes,
@@ -126,30 +127,28 @@ def login_page():
             login_error.set_text(msg)
             login_error.classes(remove="hidden")
 
+        # IP del cliente (capturada al cargar la página, estable durante la sesión).
+        ip = client_ip()
+
         def do_login():
             name = player_select.value
             pw_val = pw_input.value or ""
             with SessionLocal() as session:
-                player = session.query(Player).filter_by(name=name).first()
-
-                # Cuenta inexistente → error genérico (no revela qué falló).
-                if player is None:
-                    _show_error("❌ Nombre o contraseña incorrectos.")
-                    return
-
-                # Cuenta bloqueada por demasiados intentos fallidos.
-                if is_locked(player):
-                    mins = lock_remaining_minutes(player)
+                # IP bloqueada por demasiados intentos fallidos → ni se valida.
+                if is_locked(session, ip):
+                    mins = lock_remaining_minutes(session, ip)
                     _show_error(
-                        f"🔒 Cuenta bloqueada por intentos fallidos. "
+                        f"🔒 Demasiados intentos fallidos desde esta red. "
                         f"Probá de nuevo en ~{mins} min o pedile al admin que "
-                        f"te desbloquee."
+                        f"desbloquee tu IP."
                     )
                     return
 
-                if player.password == pw_val:
-                    # Login correcto → limpiar contador de bloqueo.
-                    register_success(player)
+                player = session.query(Player).filter_by(name=name).first()
+
+                if player is not None and player.password == pw_val:
+                    # Login correcto → limpiar contador de la IP.
+                    register_success(session, ip)
                     session.commit()
                     state["player"] = player
                     if player.is_setup:
@@ -165,16 +164,17 @@ def login_page():
                         with login_card:
                             _render_flag_selector(player)
                 else:
-                    # Contraseña incorrecta → sumar fallo y quizá bloquear.
-                    just_locked = register_failure(session, player)
+                    # Nombre o contraseña incorrectos → sumar fallo a la IP.
+                    just_locked = register_failure(session, ip)
                     session.commit()
                     if just_locked:
                         _show_error(
-                            "🔒 Demasiados intentos fallidos. Cuenta bloqueada "
-                            "por 1 hora. Pedile al admin que te desbloquee."
+                            "🔒 Demasiados intentos fallidos. Tu IP quedó "
+                            "bloqueada por 1 hora. Pedile al admin que la "
+                            "desbloquee."
                         )
                     else:
-                        left = remaining_attempts(player)
+                        left = remaining_attempts(session, ip)
                         _show_error(
                             f"❌ Nombre o contraseña incorrectos. "
                             f"Te quedan {left} intento(s)."

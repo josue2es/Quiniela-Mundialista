@@ -41,16 +41,14 @@ class Player(Base):
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)  # plain text
     avatar_flag: Mapped[str] = mapped_column(String(10), nullable=False, default="🏴")
+    # Avatar (sticker .webp) que asigna el admin. Guarda la URL servida
+    # (/avatars/<id>.webp?v=...). None = sin avatar, se muestra solo la bandera.
+    avatar_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_setup: Mapped[bool] = mapped_column(default=False)
     # Puntos iniciales (handicap) por jugador; se suman al total. Vienen del CSV.
     initial_points: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # Admin: puede corregir predicciones de partidos cerrados. Viene del CSV.
     is_admin: Mapped[bool] = mapped_column(default=False)
-    # Bloqueo por intentos fallidos de login. failed_attempts cuenta fallos
-    # consecutivos; locked_until (UTC naive) marca hasta cuándo está bloqueada
-    # la cuenta. El admin puede desbloquear desde su panel.
-    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -71,11 +69,10 @@ class Player(Base):
             "id": self.id,
             "name": self.name,
             "avatar_flag": self.avatar_flag,
+            "avatar_url": self.avatar_url,
             "is_setup": self.is_setup,
             "initial_points": self.initial_points,
             "is_admin": self.is_admin,
-            "failed_attempts": self.failed_attempts,
-            "locked_until": self.locked_until.isoformat() if self.locked_until else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -309,4 +306,39 @@ class AdminAuditLog(Base):
         return (
             f"<AdminAuditLog(admin={self.admin_id}, match={self.match_id}, "
             f"player={self.player_id}, {self.old_points}->{self.new_points})>"
+        )
+
+
+class LoginAttempt(Base):
+    """Control de fuerza bruta en el login, por dirección IP.
+
+    failed_attempts cuenta fallos consecutivos desde esa IP; locked_until
+    (UTC naive) marca hasta cuándo está bloqueada. El admin puede desbloquear
+    una IP desde su panel.
+    """
+
+    __tablename__ = "login_attempts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    # IPv6 puede llegar a 45 chars; 64 da margen.
+    ip: Mapped[str] = mapped_column(String(64), unique=True, nullable=False, index=True)
+    failed_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, nullable=False
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "ip": self.ip,
+            "failed_attempts": self.failed_attempts,
+            "locked_until": self.locked_until.isoformat() if self.locked_until else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self) -> str:
+        return (
+            f"<LoginAttempt(ip={self.ip!r}, failed={self.failed_attempts}, "
+            f"locked_until={self.locked_until})>"
         )

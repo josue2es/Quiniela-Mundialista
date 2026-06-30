@@ -1,4 +1,4 @@
-"""Tests para auth/lockout.py — bloqueo por intentos fallidos + desbloqueo admin."""
+"""Tests para auth/lockout.py — bloqueo por IP + desbloqueo por el admin."""
 
 from __future__ import annotations
 
@@ -8,18 +8,20 @@ import pytest
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from data.models import Base, Player
+from data.models import Base, LoginAttempt
 from auth.lockout import (
     MAX_FAILED_ATTEMPTS,
     LOCKOUT_MINUTES,
     is_locked,
     lock_remaining_minutes,
-    locked_players,
+    locked_ips,
     register_failure,
     register_success,
     remaining_attempts,
-    unlock_player,
+    unlock_ip,
 )
+
+IP = "203.0.113.7"
 
 
 @pytest.fixture
@@ -40,118 +42,96 @@ def db_session():
     Base.metadata.drop_all(engine)
 
 
-@pytest.fixture
-def player(db_session):
-    with db_session() as s:
-        p = Player(name="Cuestas", password="1234")
-        s.add(p)
-        s.commit()
-        return p.id
-
-
 class TestRegisterFailure:
-    def test_below_threshold_not_locked(self, db_session, player):
+    def test_below_threshold_not_locked(self, db_session):
         with db_session() as s:
-            p = s.get(Player, player)
             for _ in range(MAX_FAILED_ATTEMPTS - 1):
-                locked = register_failure(s, p)
-                assert locked is False
+                assert register_failure(s, IP) is False
             s.commit()
-            assert p.failed_attempts == MAX_FAILED_ATTEMPTS - 1
-            assert not is_locked(p)
+            assert not is_locked(s, IP)
+            assert remaining_attempts(s, IP) == 1
 
-    def test_threshold_locks(self, db_session, player):
+    def test_threshold_locks(self, db_session):
         with db_session() as s:
-            p = s.get(Player, player)
-            results = [register_failure(s, p) for _ in range(MAX_FAILED_ATTEMPTS)]
+            results = [register_failure(s, IP) for _ in range(MAX_FAILED_ATTEMPTS)]
             s.commit()
-            # Sólo el último fallo dispara el bloqueo.
             assert results[-1] is True
             assert results[:-1] == [False] * (MAX_FAILED_ATTEMPTS - 1)
-            assert is_locked(p)
-            # Al bloquear se resetea el contador (el candado es la barrera).
-            assert p.failed_attempts == 0
-            assert p.locked_until is not None
+            assert is_locked(s, IP)
+            row = s.query(LoginAttempt).filter_by(ip=IP).one()
+            assert row.failed_attempts == 0  # se resetea al bloquear
+            assert row.locked_until is not None
 
-    def test_remaining_attempts(self, db_session, player):
+    def test_failures_are_per_ip(self, db_session):
+        other = "198.51.100.42"
         with db_session() as s:
-            p = s.get(Player, player)
-            assert remaining_attempts(p) == MAX_FAILED_ATTEMPTS
-            register_failure(s, p)
-            assert remaining_attempts(p) == MAX_FAILED_ATTEMPTS - 1
+            for _ in range(MAX_FAILED_ATTEMPTS):
+                register_failure(s, IP)
+            s.commit()
+            assert is_locked(s, IP)
+            assert not is_locked(s, other)  # otra IP no se ve afectada
+
+    def test_remaining_attempts_no_row(self, db_session):
+        with db_session() as s:
+            assert remaining_attempts(s, "10.0.0.1") == MAX_FAILED_ATTEMPTS
 
 
 class TestLockTiming:
-    def test_lock_remaining_minutes(self, db_session, player):
+    def test_lock_remaining_minutes(self, db_session):
         with db_session() as s:
-            p = s.get(Player, player)
             for _ in range(MAX_FAILED_ATTEMPTS):
-                register_failure(s, p)
+                register_failure(s, IP)
             s.commit()
-            mins = lock_remaining_minutes(p)
-            assert 1 <= mins <= LOCKOUT_MINUTES
+            assert 1 <= lock_remaining_minutes(s, IP) <= LOCKOUT_MINUTES
 
-    def test_expired_lock_not_locked(self, db_session, player):
+    def test_expired_lock_not_locked(self, db_session):
         with db_session() as s:
-            p = s.get(Player, player)
-            p.locked_until = datetime.utcnow() - timedelta(minutes=1)
+            s.add(LoginAttempt(ip=IP, failed_attempts=0,
+                               locked_until=datetime.utcnow() - timedelta(minutes=1)))
             s.commit()
-            assert not is_locked(p)
-            assert lock_remaining_minutes(p) == 0
-
-    def test_future_lock_is_locked(self, db_session, player):
-        with db_session() as s:
-            p = s.get(Player, player)
-            p.locked_until = datetime.utcnow() + timedelta(minutes=30)
-            s.commit()
-            assert is_locked(p)
+            assert not is_locked(s, IP)
+            assert lock_remaining_minutes(s, IP) == 0
 
 
 class TestSuccessAndUnlock:
-    def test_register_success_clears(self, db_session, player):
+    def test_register_success_clears(self, db_session):
         with db_session() as s:
-            p = s.get(Player, player)
-            register_failure(s, p)
-            register_success(p)
+            register_failure(s, IP)
+            register_success(s, IP)
             s.commit()
-            assert p.failed_attempts == 0
-            assert p.locked_until is None
+            row = s.query(LoginAttempt).filter_by(ip=IP).one()
+            assert row.failed_attempts == 0
+            assert row.locked_until is None
 
-    def test_unlock_player(self, db_session, player):
+    def test_register_success_no_row_is_noop(self, db_session):
         with db_session() as s:
-            p = s.get(Player, player)
+            register_success(s, "10.0.0.99")  # no debe explotar
+            s.commit()
+            assert s.query(LoginAttempt).count() == 0
+
+    def test_unlock_ip(self, db_session):
+        with db_session() as s:
             for _ in range(MAX_FAILED_ATTEMPTS):
-                register_failure(s, p)
+                register_failure(s, IP)
             s.commit()
-            assert is_locked(p)
+            assert is_locked(s, IP)
 
-        assert unlock_player(player, db_session) is True
+        assert unlock_ip(IP, db_session) is True
 
         with db_session() as s:
-            p = s.get(Player, player)
-            assert not is_locked(p)
-            assert p.failed_attempts == 0
-            assert p.locked_until is None
+            assert not is_locked(s, IP)
 
-    def test_unlock_missing_player(self, db_session):
-        assert unlock_player(9999, db_session) is False
+    def test_unlock_missing_ip(self, db_session):
+        assert unlock_ip("8.8.8.8", db_session) is False
 
-    def test_locked_players_lists_only_locked(self, db_session):
+    def test_locked_ips_lists_only_locked(self, db_session):
         with db_session() as s:
-            locked = Player(
-                name="Bloqueado",
-                password="1",
-                locked_until=datetime.utcnow() + timedelta(minutes=30),
-            )
-            expired = Player(
-                name="Expirado",
-                password="1",
-                locked_until=datetime.utcnow() - timedelta(minutes=1),
-            )
-            normal = Player(name="Normal", password="1")
-            s.add_all([locked, expired, normal])
+            s.add(LoginAttempt(ip="1.1.1.1", failed_attempts=0,
+                               locked_until=datetime.utcnow() + timedelta(minutes=30)))
+            s.add(LoginAttempt(ip="2.2.2.2", failed_attempts=0,
+                               locked_until=datetime.utcnow() - timedelta(minutes=1)))
+            s.add(LoginAttempt(ip="3.3.3.3", failed_attempts=2))
             s.commit()
 
-        rows = locked_players(db_session)
-        names = {r["name"] for r in rows}
-        assert names == {"Bloqueado"}
+        ips = {r["ip"] for r in locked_ips(db_session)}
+        assert ips == {"1.1.1.1"}

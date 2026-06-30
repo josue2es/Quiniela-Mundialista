@@ -89,12 +89,8 @@ def _migrate_add_columns():
             conn.exec_driver_sql(
                 "ALTER TABLE players ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"
             )
-        if "failed_attempts" not in existing:
-            conn.exec_driver_sql(
-                "ALTER TABLE players ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0"
-            )
-        if "locked_until" not in existing:
-            conn.exec_driver_sql("ALTER TABLE players ADD COLUMN locked_until DATETIME")
+        if "avatar_url" not in existing:
+            conn.exec_driver_sql("ALTER TABLE players ADD COLUMN avatar_url VARCHAR(255)")
 
         match_cols = {
             row[1]

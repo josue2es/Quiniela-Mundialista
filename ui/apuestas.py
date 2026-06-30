@@ -59,6 +59,7 @@ def _get_closed_bets() -> list[dict]:
                     {
                         "name": p.name,
                         "avatar_flag": p.avatar_flag,
+                        "avatar_url": p.avatar_url,
                         "pred": f"{pred[0]}-{pred[1]}" if pred else None,
                         "points": scores.get((p.id, m.id), 0),
                     }
@@ -132,22 +133,36 @@ def apuestas_page() -> None:
                             ui.label(m["date_str"]).classes("match-time")
 
                     # ── Tabla de jugadores ──
+                    # Avatar (.webp) antes del nombre; bandera a la derecha.
                     columns = [
+                        {"name": "avatar", "label": "", "field": "avatar", "align": "center"},
                         {"name": "name", "label": "Jugador", "field": "name", "align": "left"},
                         {"name": "pred", "label": "Apuesta", "field": "pred", "align": "center"},
                         {"name": "pts", "label": "Pts", "field": "pts", "align": "center"},
                     ]
                     rows = [
                         {
-                            "name": f"{r['avatar_flag']}  {r['name']}",
+                            "avatar": r["avatar_url"] or "",
+                            "name": f"{r['name']}  {r['avatar_flag']}",
                             "pred": r["pred"] if r["pred"] else "—",
                             "pts": r["points"],
                         }
                         for r in m["rows"]
                     ]
-                    ui.table(columns=columns, rows=rows, row_key="name").props(
+                    table = ui.table(columns=columns, rows=rows, row_key="name").props(
                         "dense flat"
                     ).classes("w-full standings-table mt-2")
+                    table.add_slot(
+                        "body-cell-avatar",
+                        r"""
+                        <q-td :props="props" class="text-center">
+                          <q-avatar v-if="props.value" size="24px" rounded>
+                            <img :src="props.value">
+                          </q-avatar>
+                          <span v-else style="opacity:.35">👤</span>
+                        </q-td>
+                        """,
+                    )
 
     refresh()
     safe_timer(60, refresh)
