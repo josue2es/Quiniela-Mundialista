@@ -269,11 +269,20 @@ class ApiFootballProvider:
         raw_status = fixture.get("status", {}).get("short", "NS")
         status = STATUS_MAP.get(raw_status, "scheduled")
 
+        # Tanda de penales: score.penalty trae los goles del shootout cuando el
+        # partido se decidió por penales (status PEN). goals.* sigue siendo el
+        # marcador reglamentario/prórroga (empate). None si no hubo penales.
+        penalty = raw.get("score", {}).get("penalty", {}) or {}
+        pen_home = penalty.get("home")
+        pen_away = penalty.get("away")
+
         return ProviderResult(
             external_id=external_id,
             home_goals=int(home_goals),
             away_goals=int(away_goals),
             status=status,
+            pen_home=int(pen_home) if pen_home is not None else None,
+            pen_away=int(pen_away) if pen_away is not None else None,
         )
 
     # Utility ----------------------------------------------------------------

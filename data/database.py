@@ -90,6 +90,15 @@ def _migrate_add_columns():
                 "ALTER TABLE players ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"
             )
 
+        match_cols = {
+            row[1]
+            for row in conn.exec_driver_sql("PRAGMA table_info(matches)").fetchall()
+        }
+        if "pen_home" not in match_cols:
+            conn.exec_driver_sql("ALTER TABLE matches ADD COLUMN pen_home INTEGER")
+        if "pen_away" not in match_cols:
+            conn.exec_driver_sql("ALTER TABLE matches ADD COLUMN pen_away INTEGER")
+
 
 def _parse_int(value: str, default: int = 0) -> int:
     try:

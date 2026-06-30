@@ -29,3 +29,7 @@ class ProviderResult:
     home_goals: int
     away_goals: int
     status: str  # "finished" cuando aplica
+    # Tanda de penales, solo si el partido se definió por penales. None en
+    # cualquier otro caso. home_goals/away_goals siguen siendo reglamentarios.
+    pen_home: int | None = None
+    pen_away: int | None = None
