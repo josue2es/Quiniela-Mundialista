@@ -100,6 +100,11 @@ class Match(Base):
     )
     goals_home: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     goals_away: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Tanda de penales (None si el partido no se definió por penales). Se usa
+    # para premiar a quien predijo al ganador del cruce; los goles
+    # reglamentarios siguen en goals_home/goals_away.
+    pen_home: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    pen_away: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
@@ -128,6 +133,8 @@ class Match(Base):
             "status": self.status.value if self.status else None,
             "goals_home": self.goals_home,
             "goals_away": self.goals_away,
+            "pen_home": self.pen_home,
+            "pen_away": self.pen_away,
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 

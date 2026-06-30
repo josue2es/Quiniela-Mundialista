@@ -75,6 +75,8 @@ def _score_match(
     match_id: int,
     goals_home: int,
     goals_away: int,
+    pen_home: int | None = None,
+    pen_away: int | None = None,
 ) -> int:
     """Compute and persist MatchScore rows for ALL 11 players on a finished match.
 
@@ -91,6 +93,8 @@ def _score_match(
         match_id: DB id of the finished match.
         goals_home: Regulation home goals (no penalties).
         goals_away: Regulation away goals (no penalties).
+        pen_home: Penalty shootout goals for home (None unless decided on pens).
+        pen_away: Penalty shootout goals for away (None unless decided on pens).
 
     Returns:
         Number of MatchScore rows inserted (0 if all players already scored).
@@ -128,6 +132,8 @@ def _score_match(
                     pred_away=pred.pred_away,
                     res_home=goals_home,
                     res_away=goals_away,
+                    pen_home=pen_home,
+                    pen_away=pen_away,
                 )
             else:
                 points = 0  # no prediction → 0 points
@@ -219,10 +225,14 @@ async def poll_results(
             r_status: str = result.status  # type: ignore[union-attr]
             r_home: int = result.home_goals  # type: ignore[union-attr]
             r_away: int = result.away_goals  # type: ignore[union-attr]
+            r_pen_home: int | None = getattr(result, "pen_home", None)
+            r_pen_away: int | None = getattr(result, "pen_away", None)
 
             if _is_finished_status(r_status):
                 match.goals_home = r_home
                 match.goals_away = r_away
+                match.pen_home = r_pen_home
+                match.pen_away = r_pen_away
                 match.status = MatchStatus.FINISHED
                 session.commit()  # flush match state before scoring (needs players in fresh session)
 
@@ -231,16 +241,24 @@ async def poll_results(
                     match_id=match.id,
                     goals_home=r_home,
                     goals_away=r_away,
+                    pen_home=r_pen_home,
+                    pen_away=r_pen_away,
                 )
                 scored_matches += 1
                 rows_inserted += n
+                pen_note = (
+                    f" (pen {r_pen_home}-{r_pen_away})"
+                    if r_pen_home is not None and r_pen_away is not None
+                    else ""
+                )
                 logger.info(
-                    "Match %s finished: %s %d-%d %s → %d players scored",
+                    "Match %s finished: %s %d-%d %s%s → %d players scored",
                     match.external_id,
                     match.home,
                     match.goals_home,
                     match.goals_away,
                     match.away,
+                    pen_note,
                     n,
                 )
 

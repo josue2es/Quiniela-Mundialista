@@ -33,6 +33,8 @@ class FakeResult:
     home_goals: int
     away_goals: int
     status: str
+    pen_home: int | None = None
+    pen_away: int | None = None
 
 
 class FakeProvider:
@@ -311,6 +313,48 @@ class TestPollResults:
         # Los 6 sin predicción → 0 puntos
         for i in range(5, 11):
             assert scores[all_players[i].id] == 0, f"Player {i}: expected 0"
+
+    async def test_penalty_winner_scored(self, db_session, players, match):
+        """1-1 reglamentario decidido por penales: quien predijo al ganador → 2."""
+        with db_session() as session:
+            all_players = session.query(Player).all()
+            # Jugador 0 predijo victoria local (2-1); local gana la tanda → 2.
+            session.add(Prediction(
+                player_id=all_players[0].id, match_id=match,
+                pred_home=2, pred_away=1,
+            ))
+            # Jugador 1 predijo victoria visitante (0-1); pierde la tanda → 0.
+            session.add(Prediction(
+                player_id=all_players[1].id, match_id=match,
+                pred_home=0, pred_away=1,
+            ))
+            # Jugador 2 predijo empate 1-1 (marcador reglamentario exacto). Con
+            # la regla estricta de penales, el empate ya no puntúa → 0.
+            session.add(Prediction(
+                player_id=all_players[2].id, match_id=match,
+                pred_home=1, pred_away=1,
+            ))
+            session.commit()
+
+        provider = FakeProvider([
+            FakeResult(external_id="1001", home_goals=1, away_goals=1,
+                       status="finished", pen_home=4, pen_away=3),
+        ])
+
+        result = await poll_results(provider, db_session)
+        assert result["scored_matches"] == 1
+
+        with db_session() as session:
+            m = session.query(Match).filter_by(id=match).first()
+            assert m.pen_home == 4
+            assert m.pen_away == 3
+            scores = {
+                s.player_id: s.points
+                for s in session.query(MatchScore).filter_by(match_id=match).all()
+            }
+        assert scores[all_players[0].id] == 2  # acertó al ganador de penales
+        assert scores[all_players[1].id] == 0  # ganador equivocado
+        assert scores[all_players[2].id] == 0  # predijo empate: ya no puntúa
 
     async def test_idempotent_full_flow(self, db_session, players, match):
         """Ejecutar poll_results dos veces no duplica."""

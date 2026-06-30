@@ -123,7 +123,12 @@ def apply_correction(
 
         # ── Recalcular e insertar ──
         new_points = compute_score(
-            new_home, new_away, match.goals_home, match.goals_away
+            new_home,
+            new_away,
+            match.goals_home,
+            match.goals_away,
+            pen_home=match.pen_home,
+            pen_away=match.pen_away,
         )
         session.add(
             MatchScore(player_id=player_id, match_id=match_id, points=new_points)

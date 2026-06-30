@@ -90,8 +90,45 @@ class TestScore:
         assert score(0, 0, 1, 1) == 2
 
     def test_penalties_draw_wrong_outcome(self):
-        """Partido 1-1 reglamentario. Predijo victoria local → 0."""
+        """1-1 reglamentario, sin datos de penales. Predijo victoria local → 0."""
         assert score(2, 1, 1, 1) == 0
+
+
+class TestPenaltyWinner:
+    """Penales (regla estricta): la tanda define el resultado.
+
+    Sólo quien predijo al ganador de la tanda puntúa (2). Predecir empate —aun
+    el marcador reglamentario exacto— recibe 0.
+    """
+
+    def test_predicted_home_win_home_wins_pens(self):
+        # Predijo 2-1 (local). Reglamentario 1-1, local gana 4-3 en penales → 2.
+        assert score(2, 1, 1, 1, pen_home=4, pen_away=3) == 2
+
+    def test_predicted_away_win_away_wins_pens(self):
+        # Predijo 0-2 (visitante). Reglamentario 1-1, visitante gana penales → 2.
+        assert score(0, 2, 1, 1, pen_home=3, pen_away=5) == 2
+
+    def test_predicted_home_but_away_wins_pens(self):
+        # Predijo local, pero el visitante ganó la tanda → 0.
+        assert score(2, 1, 1, 1, pen_home=2, pen_away=4) == 0
+
+    def test_predicted_away_but_home_wins_pens(self):
+        # Predijo visitante, pero el local ganó la tanda → 0.
+        assert score(1, 2, 1, 1, pen_home=5, pen_away=4) == 0
+
+    def test_draw_prediction_scores_zero_with_pens(self):
+        # Estricto: predecir empate ya no puntúa si hubo definición por penales.
+        assert score(0, 0, 1, 1, pen_home=4, pen_away=3) == 0
+
+    def test_exact_regulation_draw_scores_zero_with_pens(self):
+        # Estricto: ni siquiera el marcador reglamentario exacto puntúa.
+        assert score(1, 1, 1, 1, pen_home=4, pen_away=3) == 0
+
+    def test_regulation_win_unaffected_by_pen_args(self):
+        # Si NO hubo empate reglamentario, los penales son irrelevantes.
+        assert score(2, 0, 2, 0, pen_home=1, pen_away=0) == 4
+        assert score(3, 0, 2, 0, pen_home=1, pen_away=0) == 2
 
     # ── Edge cases ──
     def test_zero_zero_exact(self):
